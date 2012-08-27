@@ -1,5 +1,4 @@
 fs              = require 'fs'
-fsExtra         = require 'fs.extra'
 util            = require 'util'
 path            = require 'path'
 walk            = require 'walk'
@@ -7,39 +6,53 @@ optparse        = require './optparse'
 {spawn, exec}   = require 'child_process'
 
 publicDir   = 'public'
-targetDir   = 'target'
+outputDir   = 'target'
 options     = {}
 sources     = []
 countFiles  = null
 server      = null
 timerRestartServer = null
+pathToNodeInit = "/bundles/cord/core/nodeInit"
 
 # Print if call without arguments
-EmptyArguments = '''Usage: cordjs [options]'''
+EmptyArguments = '''Usage: cordjs [options] path/to/project -- [args]'''
 
 # List of options flags
 OptionsList = [
   ['-a', '--autorestart',     'autorestart server']
-  ['-d', '--dev',             'development mode - copy all files to the targetDir']
+  ['-d', '--dev',             'development mode - copy all files to the outputDir']
   ['-h', '--help',            'display this help message']
+  ['-o', '--output [DIR]',    'output directory']
   ['-s', '--server',          'start server']
   ['-w', '--watch',           'watch scripts for changes and rerun commands']
 ]
 
 exports.run = ->
   parseOptions()
-  return usage()  if options.help
-  fsExtra.rmrf targetDir, (err) ->
-    exec "mkdir -p #{path.join(targetDir)}", ->
-      countFiles = 0
-      fs.realpath publicDir, (err, source) ->
-        syncFiles source, path.normalize(source), ->
-          exec "coffee -bc -o #{targetDir} #{publicDir}", ->
-            exec "sass --update #{publicDir}:#{targetDir}"
-            timeLog "Synchronized #{ countFiles } files"
-            if options.server
-              fs.realpath targetDir, (err, source) ->
-                server = require "#{ source }/bundles/cord/core/nodeInit"
+  return usage()              if options.help
+  outputDir = options.output  if options.output
+
+  try
+    publicDirFull = fs.realpathSync publicDir
+  catch e
+    if e.code is 'ENOENT'
+      timeLog "Error: no such public directory '#{publicDir}'"
+      return false
+
+  outputDirFull = path.join path.dirname(publicDirFull), outputDir
+
+  removeDirSync outputDirFull
+  exec "mkdir -p #{ outputDirFull }", ->
+    timeLog "Output directory created '#{outputDirFull}'"
+    countFiles = 0
+
+    syncFiles publicDirFull, path.normalize(publicDirFull), ->
+      exec "coffee -bc -o #{outputDirFull} #{publicDirFull}", ->
+        exec "sass --update #{publicDirFull}:#{outputDirFull}"
+        timeLog "Synchronized #{ countFiles } files"
+        if options.server
+          pathToNodeInit = "#{ outputDirFull }#{ pathToNodeInit }"
+          server = require pathToNodeInit
 
 # Synchronize files
 syncFiles = (source, base, callback) ->
@@ -94,7 +107,9 @@ restartServer = ->
   return if !options.autorestart
   clearTimeout timerRestartServer
   timerRestartServer = wait 200, ->
-    server.restartServer?()
+    server.stop?()
+    server = require "#{ source }/bundles/cord/core/nodeInit"
+
 
 # Copy file to targetPath
 copyFile = (source, base, callback) ->
@@ -188,12 +203,27 @@ removeSource = (source, base, remove) ->
           throw err if err and err.code isnt 'ENOENT'
           timeLog "removed #{source}"
 
+#Remove dir
+removeDirSync = (source) ->
+  try
+    for file in fs.readdirSync source
+      filename = path.join source, file
+      stat = fs.statSync filename
+      continue if filename is "." or filename == ".."
+      if stat.isDirectory()
+        removeDirSync filename
+      else
+        fs.unlinkSync filename
+    fs.rmdirSync source
+  catch e
+    throw e unless e.code is 'ENOENT'
+
 # Get output path
 outputPath = (source, base) ->
   filename  = path.basename source
   srcDir    = path.dirname source
   baseDir   = if base is '.' then srcDir else srcDir.substring base.length
-  dir       = path.join targetDir, baseDir
+  dir       = path.join outputDir, baseDir
   path.join dir, filename
 
 # Use the OptionParser module to extract all options from
@@ -203,6 +233,7 @@ parseOptions = ->
   o = options  = optionParser.parse process.argv[2..]
   if options.autorestart
     options.server = options.watch = true
+  publicDir = o.arguments[0] if o.arguments.length
   return
 
 # Print the `--help` usage message and exit
@@ -219,3 +250,4 @@ timeLog = (message) ->
 
 printLine = (line) -> process.stdout.write line + '\n'
 printWarn = (line) -> process.stderr.write line + '\n'
+
