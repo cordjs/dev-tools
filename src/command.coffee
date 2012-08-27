@@ -45,8 +45,7 @@ exports.run = ->
   exec "mkdir -p #{ outputDirFull }", ->
     timeLog "Output directory created '#{outputDirFull}'"
     countFiles = 0
-
-    syncFiles publicDirFull, path.normalize(publicDirFull), ->
+    syncFiles publicDir, path.normalize(publicDirFull), ->
       exec "coffee -bc -o #{outputDirFull} #{publicDirFull}", ->
         exec "sass --update #{publicDirFull}:#{outputDirFull}"
         timeLog "Synchronized #{ countFiles } files"
@@ -87,17 +86,17 @@ syncFile = (source, base, callback, onlyWatch = false) ->
       if extname is ".coffee" and onlyWatch
       #        console.log 'file edit: ', "#{path.dirname outputPath(source, base)} #{source}"
         exec "coffee -bc -o #{path.dirname outputPath(source, base)} #{source}", ->
-          timeLog "Compile CoffeeScript #{ source }"
+          timeLog "Update CoffeeScript '#{ source }'"
           callback?()
       else if extname is (".scss" or ".sass") and onlyWatch
         exec "sass --update #{path.dirname outputPath(source, base)}:#{source}", ->
-          timeLog "Compile Saas #{ source }"
+          timeLog "Update Saas '#{ source }'"
           callback?()
       else
         callback?()
     else
+      timeLog "Update file '#{ source }'" if onlyWatch
       if options.dev
-        timeLog "update file #{ source }" if onlyWatch
         copyFile source, base, (err) -> callback?()
       else
         countFiles--
@@ -141,6 +140,7 @@ watchFile = (source, base) ->
         sync()
       catch e
         removeSource source, base, yes
+        timeLog "Remove file '#{ source }'"
     else throw e
 
   sync = ->
@@ -179,6 +179,7 @@ watchDir = (source, base) ->
           for file in files
             file = path.join source, file
             continue if sources.some (s) -> s.indexOf(file) >= 0
+            timeLog "Add file '#{ source }'"
             sources.push file
             syncFiles file, base
   catch e
