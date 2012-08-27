@@ -1,0 +1,19 @@
+{
+	"name":         "cordjs",
+	"keywords":     ["cordjs", "framework"],
+	"version":      "1.0.0",
+	"engines":      {
+		"node":       ">=0.6.0"
+	},
+	"directories" : {
+		"lib" : "./lib/cordjs"
+	},
+	"main" : "./lib/cordjs/cordjs",
+	"bin": {
+		"cordjs":  "./bin/cordjs"
+	},
+	"repository":   {
+		"type": "git",
+		"url": "https://github.com/cordjs/dev-tools.git"
+	}
+}
