@@ -8,6 +8,9 @@
 	"directories" : {
 		"lib" : "./lib/cordjs"
 	},
+	"dependencies": {
+		"walk": "2.x"
+	},
 	"main" : "./lib/cordjs/cordjs",
 	"bin": {
 		"cordjs":  "./bin/cordjs"
