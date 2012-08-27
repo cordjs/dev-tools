@@ -13,6 +13,7 @@ countFiles  = null
 server      = null
 timerRestartServer = null
 pathToNodeInit = "/bundles/cord/core/nodeInit"
+baseDirFull = null
 
 # Print if call without arguments
 EmptyArguments = '''Usage: cordjs [options] path/to/project -- [args]'''
@@ -33,24 +34,22 @@ exports.run = ->
   outputDir = options.output  if options.output
 
   try
-    publicDirFull = fs.realpathSync publicDir
+    baseDirFull = path.dirname( fs.realpathSync publicDir )
   catch e
     if e.code is 'ENOENT'
       timeLog "Error: no such public directory '#{publicDir}'"
       return false
 
-  outputDirFull = path.join path.dirname(publicDirFull), outputDir
-
-  removeDirSync outputDirFull
-  exec "mkdir -p #{ outputDirFull }", ->
-    timeLog "Output directory created '#{outputDirFull}'"
+  removeDirSync outputDir
+  exec "mkdir -p #{ publicDir }", ->
+    timeLog "Output directory created '#{outputDir}'"
     countFiles = 0
-    syncFiles publicDir, path.normalize(publicDirFull), ->
-      exec "coffee -bc -o #{outputDirFull} #{publicDirFull}", ->
-        exec "sass --update #{publicDirFull}:#{outputDirFull}"
+    syncFiles publicDir, path.normalize(publicDir), ->
+      exec "coffee -bco #{outputDir} #{publicDir}", (e)->
+        exec "sass --update #{publicDir}:#{outputDir}"
         timeLog "Synchronized #{ countFiles } files"
         if options.server
-          pathToNodeInit = "#{ outputDirFull }#{ pathToNodeInit }"
+          pathToNodeInit = "#{ path.join baseDirFull, outputDir }#{ pathToNodeInit }"
           server = require pathToNodeInit
 
 # Synchronize files
