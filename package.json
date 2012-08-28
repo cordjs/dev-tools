@@ -1,23 +1,22 @@
 {
-	"name":         "cordjs",
-	"keywords":     ["cordjs", "framework"],
-	"version":      "1.0.0",
-	"preferGlobal": "true",
-	"directories" : {
-		"lib" : "./lib/cordjs"
-	},
-	"main" : "./lib/cordjs/cordjs",
-	"bin": {
-		"cordjs":  "./bin/cordjs"
-	},
-	"dependencies": {
-		"walk": "2.x"
-	},
-	"engines":      {
-		"node":       ">=0.6.0"
-	},
-	"repository":   {
-		"type": "git",
-		"url": "https://github.com/cordjs/dev-tools.git"
-	}
+  "name":         "cordjs",
+  "keywords":     ["cordjs", "framework"],
+  "version":      "1.0.0",
+  "directories" : {
+    "lib" : "./lib/cordjs"
+  },
+  "main" : "./lib/cordjs/cordjs",
+  "bin": {
+    "cordjs":  "./bin/cordjs"
+  },
+  "dependencies": {
+    "walk": "2.x"
+  },
+  "engines":      {
+    "node":       ">=0.6.0"
+  },
+  "repository":   {
+    "type": "git",
+    "url": "https://github.com/cordjs/dev-tools.git"
+  }
 }
