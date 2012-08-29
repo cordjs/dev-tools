@@ -11,7 +11,6 @@ options     = {}
 sources     = []
 countFiles  = null
 server      = null
-timerRestartServer = null
 pathToNodeInit = "/bundles/cord/core/nodeInit"
 baseDirFull = null
 
@@ -20,7 +19,7 @@ EmptyArguments = '''Usage: cordjs [options] path/to/project -- [args]'''
 
 # List of options flags
 OptionsList = [
-  ['-a', '--autorestart',     'autorestart server']
+  ['-b', '--build',           'build project']
   ['-d', '--dev',             'development mode - copy all files to the outputDir']
   ['-h', '--help',            'display this help message']
   ['-o', '--output [DIR]',    'output directory']
@@ -41,16 +40,24 @@ exports.run = ->
       return false
 
   removeDirSync outputDir
-  exec "mkdir -p #{ publicDir }", ->
+
+  exec "mkdir -p #{ outputDir }", ->
     timeLog "Output directory created '#{outputDir}'"
     countFiles = 0
     syncFiles publicDir, path.normalize(publicDir), ->
-      exec "coffee -bco #{outputDir} #{publicDir}", (e)->
-        exec "sass --update #{publicDir}:#{outputDir}"
-        timeLog "Synchronized #{ countFiles } files"
-        if options.server
-          pathToNodeInit = "#{ path.join baseDirFull, outputDir }#{ pathToNodeInit }"
-          server = require pathToNodeInit
+      exec "coffee -bco #{path.join outputDir, publicDir} #{publicDir}", (e)->
+        exec "sass --update #{publicDir}:#{path.join outputDir, publicDir}"
+        return syncFiles 'node_modules', path.normalize('node_modules'), completeSync if options.build
+        completeSync()
+
+  completeSync = ->
+    exec "coffee -bc -o #{ outputDir } server.coffee", ->
+      countFiles++
+      timeLog "Synchronized #{ countFiles } files"
+      if options.server
+        pathToNodeInit = "#{ path.join baseDirFull, outputDir, publicDir, pathToNodeInit }"
+        server = require pathToNodeInit, true
+        server.init path.join(baseDirFull, outputDir, publicDir)
 
 # Synchronize files
 syncFiles = (source, base, callback) ->
@@ -70,6 +77,7 @@ syncFiles = (source, base, callback) ->
       syncFile source, base, ->
         countFiles++
         next()
+      next()
 
     walker.on 'end', ->
       callback?()
@@ -78,12 +86,10 @@ syncFiles = (source, base, callback) ->
 syncFile = (source, base, callback, onlyWatch = false) ->
   sources.push source     if !onlyWatch
   watchFile source, base  if !onlyWatch and options.watch
-  restartServer()         if onlyWatch
   extname = path.extname source
   switch extname
     when ".coffee", ".scss", ".sass"
       if extname is ".coffee" and onlyWatch
-      #        console.log 'file edit: ', "#{path.dirname outputPath(source, base)} #{source}"
         exec "coffee -bc -o #{path.dirname outputPath(source, base)} #{source}", ->
           timeLog "Update CoffeeScript '#{ source }'"
           callback?()
@@ -100,14 +106,6 @@ syncFile = (source, base, callback, onlyWatch = false) ->
       else
         countFiles--
         callback?()
-
-restartServer = ->
-  return if !options.autorestart
-  clearTimeout timerRestartServer
-  timerRestartServer = wait 200, ->
-    server.stop?()
-    server = require "#{ source }/bundles/cord/core/nodeInit"
-
 
 # Copy file to targetPath
 copyFile = (source, base, callback) ->
@@ -218,11 +216,14 @@ removeDirSync = (source) ->
   catch e
     throw e unless e.code is 'ENOENT'
 
+
+
 # Get output path
 outputPath = (source, base) ->
   filename  = path.basename source
   srcDir    = path.dirname source
-  baseDir   = if base is '.' then srcDir else srcDir.substring base.length
+#  baseDir   = if base is '.' then srcDir else srcDir.substring base.length
+  baseDir   = srcDir
   dir       = path.join outputDir, baseDir
   path.join dir, filename
 
