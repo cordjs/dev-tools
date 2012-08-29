@@ -5,20 +5,22 @@ walk            = require 'walk'
 optparse        = require './optparse'
 {spawn, exec}   = require 'child_process'
 
+util = require 'util'
 publicDir   = 'public'
 outputDir   = 'target'
 options     = {}
 sources     = []
 countFiles  = null
-server      = null
 pathToNodeInit = "/bundles/cord/core/nodeInit"
 baseDirFull = null
+serverChild = null
 
 # Print if call without arguments
 EmptyArguments = '''Usage: cordjs [options] path/to/project -- [args]'''
 
 # List of options flags
 OptionsList = [
+  ['-a', '--autorestart',     'autorestart server']
   ['-b', '--build',           'build project']
   ['-d', '--dev',             'development mode - copy all files to the outputDir']
   ['-h', '--help',            'display this help message']
@@ -56,8 +58,31 @@ exports.run = ->
       timeLog "Synchronized #{ countFiles } files"
       if options.server
         pathToNodeInit = "#{ path.join baseDirFull, outputDir, publicDir, pathToNodeInit }"
-        server = require pathToNodeInit, true
-        server.init path.join(baseDirFull, outputDir, publicDir)
+
+        startServer()
+
+#        server = require pathToNodeInit, true
+#        server.init path.join(baseDirFull, outputDir, publicDir)
+
+# start server
+startServer = ->
+  serverChild = spawn "node", [path.join(outputDir, 'server.js'), path.join(outputDir, publicDir)]
+
+  serverChild.stdout.on 'data', (data) ->
+    util.print data
+
+  serverChild.stderr.on 'data', (error) ->
+    util.print error
+
+# stop server
+stopServer = ->
+  serverChild?.kill()
+
+# restart server
+restartServer = ->
+  stopServer()
+  startServer()
+  timeLog 'Server restarted'
 
 # Synchronize files
 syncFiles = (source, base, callback) ->
@@ -149,6 +174,7 @@ watchFile = (source, base) ->
         stats.mtime.getTime() is prevStats.mtime.getTime()
         prevStats = stats
         syncFile source, base, () ->
+            restartServer() if options.server
             rewatch()
           , yes
 
@@ -216,8 +242,6 @@ removeDirSync = (source) ->
   catch e
     throw e unless e.code is 'ENOENT'
 
-
-
 # Get output path
 outputPath = (source, base) ->
   filename  = path.basename source
@@ -235,7 +259,6 @@ parseOptions = ->
   if options.autorestart
     options.server = options.watch = true
   publicDir = o.arguments[0] if o.arguments.length
-  return
 
 # Print the `--help` usage message and exit
 usage = ->
