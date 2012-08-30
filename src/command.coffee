@@ -32,7 +32,8 @@ OptionsList = [
 ]
 
 exports.run = ->
-  type = process.argv[2..].shift().split ':'
+  args = process.argv[2..]
+  type = args.shift().split ':'
   command = type[1]
   if command?
     otherCommand type[0], command, args
@@ -72,10 +73,10 @@ mainCommand = ->
         startServer()
 
 otherCommand = (type, command, args) ->
-  if Cordjs.generator.exists type
-    Cordjs.generator.do type, command, args
+  if Cordjs.Generator.exists type
+    Cordjs.Generator.do type, command, args
   else
-    console.log "Generator #{ type } not found"
+    console.log "Generator #{ type } not found. Available generators: #{ Cordjs.Generator.list() }"
 
 create = (type) ->
   type = type.shift()

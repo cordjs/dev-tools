@@ -7,7 +7,8 @@ sys   = require 'sys'
 # The current version number
 exports.VERSION = '0.0.1'
 
-generator = {
+
+Generator = {
   collection: {}
 
   addGenerator: (name, callback) ->
@@ -16,23 +17,22 @@ generator = {
   exists: (name) ->
     !!@collection[name]
 
-  init: ->
-    @addGenerator 'project', projectGenerator
-
   do: (name, args...) ->
     @collection[name](args...)
+
+  list: ->
+    Object.keys(@collection).join ', '
+
+  init: ->
+    # def list generators
+    @addGenerator 'project', projectGenerator
+    @addGenerator 'bundle', bundleGenerator
 }
 
+# Project commands
 projectGenerator = (command, args) ->
   switch command
     when "create"
-#      createDir 'public'
-#      createDir 'public/app'
-#      createDir 'public/bundles'
-#      createDir 'public/bundles/cord'
-#      createDir 'public/bundles/cord/core'
-#      createDir 'public/vendor'
-
       console.log 'Cloning based project layout...'
       sendCommand "git clone https://github.com/cordjs/cordjs.git .", ->
         createDir 'public/bundles/cord'
@@ -43,9 +43,17 @@ projectGenerator = (command, args) ->
     when "update"
       sendCommand "git pull"
 
-generator.init()
+# Bundle commands
+bundleGenerator = (command, args) ->
+  switch command
+    when "create"
+      console.log ''
 
-exports.generator = generator
+# Init def-generators
+Generator.init()
+
+# Export
+exports.Generator = Generator
 
 # Create directory
 createDir = (dir) ->
@@ -55,6 +63,7 @@ createDir = (dir) ->
     fs.mkdirSync path.join(root, dir), '0755'
     console.log 'Create directory: ', dir
 
+# exec command-line
 sendCommand = (command, callback) ->
   exec command, (error, stdout, stderr) ->
     if error
