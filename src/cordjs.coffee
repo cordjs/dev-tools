@@ -7,7 +7,6 @@ sys   = require 'sys'
 # The current version number
 exports.VERSION = '0.0.1'
 
-
 Generator = {
   collection: {}
 
@@ -33,7 +32,7 @@ Generator = {
 projectGenerator = (command, args) ->
   switch command
     when "create"
-      console.log 'Cloning based project layout...'
+      utils.timeLog 'Cloning based project layout...'
       sendCommand "git clone https://github.com/cordjs/cordjs.git .", ->
         createDir 'public/bundles/cord'
         createDir 'public/bundles/cord/core'
@@ -47,7 +46,13 @@ projectGenerator = (command, args) ->
 bundleGenerator = (command, args) ->
   switch command
     when "create"
-      console.log ''
+      bundleName = args.shift()
+      if !bundleName
+        console.log 'Error: Empty bandle name'
+        process.exit()
+
+      createDir path.join("public/bundles", bundleName)
+      console.log "Bundle #{ bundleName } create!"
 
 # Init def-generators
 Generator.init()
@@ -61,7 +66,7 @@ createDir = (dir) ->
   pathDir = path.join root, dir
   if !fs.existsSync pathDir
     fs.mkdirSync path.join(root, dir), '0755'
-    console.log 'Create directory: ', dir
+#    console.log 'Create directory: ', dir
 
 # exec command-line
 sendCommand = (command, callback) ->
@@ -72,3 +77,10 @@ sendCommand = (command, callback) ->
       console.log stdout if stdout
 
     callback?(arguments...)
+
+# Utilites
+utils = {
+  timeLog: (message) -> console.log "#{(new Date).toLocaleTimeString()} - #{message}"
+  timeLogError: (message) -> console.log ""
+}
+exports.utils = utils

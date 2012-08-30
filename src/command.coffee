@@ -31,6 +31,7 @@ OptionsList = [
   ['-w', '--watch',           'watch scripts for changes and rerun commands']
 ]
 
+# Entry
 exports.run = ->
   args = process.argv[2..]
   type = args.shift().split ':'
@@ -44,18 +45,19 @@ exports.run = ->
     outputDir = options.output  if options.output
     mainCommand()
 
+# main commans - build, compile, watch, startserver, etc.
 mainCommand = ->
   try
     baseDirFull = path.dirname( fs.realpathSync publicDir )
   catch e
     if e.code is 'ENOENT'
-      timeLog "Error: no such public directory '#{publicDir}'"
+      Cordjs.utils.timeLog "Error: no such public directory '#{publicDir}'"
       return false
 
   removeDirSync outputDir
 
   exec "mkdir -p #{ outputDir }", ->
-    timeLog "Output directory created '#{outputDir}'"
+    Cordjs.utils.timeLog "Output directory created '#{outputDir}'"
     countFiles = 0
     syncFiles publicDir, path.normalize(publicDir), ->
       exec "coffee -bco #{path.join outputDir, publicDir} #{publicDir}", (e)->
@@ -66,12 +68,13 @@ mainCommand = ->
   completeSync = ->
     exec "coffee -bc -o #{ outputDir } server.coffee", ->
       countFiles++
-      timeLog "Synchronized #{ countFiles } files"
+      Cordjs.utils.timeLog "Synchronized #{ countFiles } files"
       if options.server
         pathToNodeInit = "#{ path.join baseDirFull, outputDir, publicDir, pathToNodeInit }"
 
         startServer()
 
+# other commands - create project, bundle, etc
 otherCommand = (type, command, args) ->
   if Cordjs.Generator.exists type
     Cordjs.Generator.do type, command, args
@@ -107,7 +110,7 @@ stopServer = ->
 restartServer = ->
   stopServer()
   startServer()
-  timeLog 'Server restarted'
+  Cordjs.utils.timeLog 'Server restarted'
 
 # Synchronize files
 syncFiles = (source, base, callback) ->
@@ -141,16 +144,16 @@ syncFile = (source, base, callback, onlyWatch = false) ->
     when ".coffee", ".scss", ".sass"
       if extname is ".coffee" and onlyWatch
         exec "coffee -bc -o #{path.dirname outputPath(source, base)} #{source}", ->
-          timeLog "Update CoffeeScript '#{ source }'"
+          Cordjs.utils.timeLog "Update CoffeeScript '#{ source }'"
           callback?()
       else if extname is (".scss" or ".sass") and onlyWatch
         exec "sass --update #{path.dirname outputPath(source, base)}:#{source}", ->
-          timeLog "Update Saas '#{ source }'"
+          Cordjs.utils.timeLog "Update Saas '#{ source }'"
           callback?()
       else
         callback?()
     else
-      timeLog "Update file '#{ source }'" if onlyWatch
+      Cordjs.utils.timeLog "Update file '#{ source }'" if onlyWatch
       if options.dev
         copyFile source, base, (err) -> callback?()
       else
@@ -187,7 +190,7 @@ watchFile = (source, base) ->
         sync()
       catch e
         removeSource source, base, yes
-        timeLog "Remove file '#{ source }'"
+        Cordjs.utils.timeLog "Remove file '#{ source }'"
     else throw e
 
   sync = ->
@@ -227,7 +230,7 @@ watchDir = (source, base) ->
           for file in files
             file = path.join source, file
             continue if sources.some (s) -> s.indexOf(file) >= 0
-            timeLog "Add file '#{ source }'"
+            Cordjs.utils.timeLog "Add file '#{ source }'"
             sources.push file
             syncFiles file, base
   catch e
@@ -250,7 +253,7 @@ removeSource = (source, base, remove) ->
       if itExists
         fs.unlink outPath, (err) ->
           throw err if err and err.code isnt 'ENOENT'
-          timeLog "removed #{source}"
+          Cordjs.utils.timeLog "removed #{source}"
 
 #Remove dir
 removeDirSync = (source) ->
@@ -298,8 +301,6 @@ wait = (milliseconds, func) -> setTimeout func, milliseconds
 
 exists    = fs.exists or path.exists
 hidden = (file) -> /\/\.|~$/.test(file) or /^\.|~$/.test file
-timeLog = (message) ->
-  console.log "#{(new Date).toLocaleTimeString()} - #{message}"
 
 printLine = (line) -> process.stdout.write line + '\n'
 printWarn = (line) -> process.stderr.write line + '\n'
