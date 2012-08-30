@@ -4,6 +4,7 @@ path            = require 'path'
 walk            = require 'walk'
 optparse        = require './optparse'
 {spawn, exec}   = require 'child_process'
+Cordjs          = require './Cordjs'
 
 util = require 'util'
 publicDir   = 'public'
@@ -26,14 +27,23 @@ OptionsList = [
   ['-h', '--help',            'display this help message']
   ['-o', '--output [DIR]',    'output directory']
   ['-s', '--server',          'start server']
+  ['-v', '--version',         'display the version number']
   ['-w', '--watch',           'watch scripts for changes and rerun commands']
 ]
 
 exports.run = ->
-  parseOptions()
-  return usage()              if options.help
-  outputDir = options.output  if options.output
+  type = process.argv[2..].shift().split ':'
+  command = type[1]
+  if command?
+    otherCommand type[0], command, args
+  else
+    parseOptions process.argv[2..]
+    return usage()              if options.help
+    return version()            if options.version
+    outputDir = options.output  if options.output
+    mainCommand()
 
+mainCommand = ->
   try
     baseDirFull = path.dirname( fs.realpathSync publicDir )
   catch e
@@ -61,8 +71,22 @@ exports.run = ->
 
         startServer()
 
-#        server = require pathToNodeInit, true
-#        server.init path.join(baseDirFull, outputDir, publicDir)
+otherCommand = (type, command, args) ->
+  if Cordjs.generator.exists type
+    Cordjs.generator.do type, command, args
+  else
+    console.log "Generator #{ type } not found"
+
+create = (type) ->
+  type = type.shift()
+
+  if !type?
+    console.log 'What create: app or bundle?'
+
+  else if !Cordjs.creator.exist type
+    console.log "Generator #{ type } not found"
+
+  console.log 'type: ', type
 
 # start server
 startServer = ->
@@ -253,9 +277,9 @@ outputPath = (source, base) ->
 
 # Use the OptionParser module to extract all options from
 # `process.argv` that are specified in `SWITCHES`.
-parseOptions = ->
+parseOptions = (args) ->
   optionParser  = new optparse.OptionParser OptionsList, EmptyArguments
-  o = options  = optionParser.parse process.argv[2..]
+  o = options  = optionParser.parse args
   if options.autorestart
     options.server = options.watch = true
   publicDir = o.arguments[0] if o.arguments.length
@@ -263,6 +287,10 @@ parseOptions = ->
 # Print the `--help` usage message and exit
 usage = ->
   printLine (new optparse.OptionParser OptionsList, EmptyArguments).help()
+
+# Print the `--version` message and exit
+version = ->
+  printLine "Cordjs version #{Cordjs.VERSION}"
 
 # Convenience for cleaner setTimeouts
 wait = (milliseconds, func) -> setTimeout func, milliseconds
