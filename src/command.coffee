@@ -117,7 +117,7 @@ syncFiles = (source, base, callback) ->
   fs.stat source, (err, stats) ->
     return syncFile source, base if stats.isFile()
 
-    walker = walk.walk source
+    walker = walk.walk source, { followLinks: false }
     walker.on 'directory', (root, stat, next) ->
       source = path.join root, stat.name
       return next()           if hidden source
@@ -132,37 +132,50 @@ syncFiles = (source, base, callback) ->
         next()
       next()
 
+    walker.on 'symbolicLink', (root, stat, next) ->
+      symbolicLink = path.join root, stat.name
+      source = fs.readlinkSync symbolicLink
+      return next() if hidden source
+      syncFile source, base, ->
+        countFiles++
+        next()
+      , false, symbolicLink
+      next()
+
     walker.on 'end', ->
       callback?()
 
 # Synchronize target-file with the source
-syncFile = (source, base, callback, onlyWatch = false) ->
-  sources.push source     if !onlyWatch
-  watchFile source, base  if !onlyWatch and options.watch
-  extname = path.extname source
+syncFile = (source, base, callback, onlyWatch = false, symbolicLink) ->
+  baseSource = (if symbolicLink then symbolicLink else source)
+  sources.push baseSource                   if !onlyWatch
+  watchFile baseSource, base, symbolicLink  if !onlyWatch and options.watch
+  extname = path.extname baseSource
   switch extname
     when ".coffee", ".scss", ".sass"
       if extname is ".coffee" and onlyWatch
-        exec "coffee -bc -o #{path.dirname outputPath(source, base)} #{source}", ->
-          Cordjs.utils.timeLog "Update CoffeeScript '#{ source }'"
+        exec "coffee -bc -o #{path.dirname outputPath(baseSource, base)} #{source}", ->
+          Cordjs.utils.timeLog "Update CoffeeScript '#{ baseSource }'"
           callback?()
       else if extname is (".scss" or ".sass") and onlyWatch
-        exec "sass --update #{path.dirname outputPath(source, base)}:#{source}", ->
-          Cordjs.utils.timeLog "Update Saas '#{ source }'"
+        exec "sass --update #{path.dirname outputPath(baseSource, base)}:#{source}", ->
+          Cordjs.utils.timeLog "Update Saas '#{ baseSource }'"
           callback?()
       else
         callback?()
     else
-      Cordjs.utils.timeLog "Update file '#{ source }'" if onlyWatch
+      Cordjs.utils.timeLog "Update file '#{ baseSource }'" if onlyWatch
       if options.dev or options.build
-        copyFile source, base, (err) -> callback?()
+        copyFile source, base, (err) ->
+          callback?()
+        , symbolicLink
       else
         countFiles--
         callback?()
 
 # Copy file to targetPath
-copyFile = (source, base, callback) ->
-  filePath = outputPath source, base
+copyFile = (source, base, callback, symbolicLink) ->
+  filePath = outputPath (if symbolicLink then symbolicLink else source), base
   fileDir  = path.dirname filePath
 
   copyHelper = () ->
@@ -177,7 +190,7 @@ copyFile = (source, base, callback) ->
 
 # Watch a source file using `fs.watch`, recompiling it every
 # time the file is updated.
-watchFile = (source, base) ->
+watchFile = (source, base, symbolicLink) ->
 
   prevStats = null
   syncTimeout = null
@@ -204,7 +217,7 @@ watchFile = (source, base) ->
         syncFile source, base, () ->
             restartServer() if options.server
             rewatch()
-          , yes
+        , yes, symbolicLink
 
   try
     watcher = fs.watch source, sync
