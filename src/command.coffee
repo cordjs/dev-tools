@@ -134,8 +134,9 @@ syncFiles = (source, base, callback) ->
 
     walker.on 'symbolicLink', (root, stat, next) ->
       symbolicLink = path.join root, stat.name
-      source = fs.readlinkSync symbolicLink
-      return next() if hidden source
+      dirname = path.dirname symbolicLink
+      source = path.join dirname, fs.readlinkSync(symbolicLink)
+      return next() if hidden symbolicLink
       syncFile source, base, ->
         countFiles++
         next()
@@ -307,7 +308,7 @@ usage = ->
 
 # Print the `--version` message and exit
 version = ->
-  printLine "Cordjs version #{Cordjs.VERSION}"
+  printLine "Cordjs current version: #{Cordjs.VERSION}"
 
 # Convenience for cleaner setTimeouts
 wait = (milliseconds, func) -> setTimeout func, milliseconds
