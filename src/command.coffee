@@ -4,7 +4,7 @@ path            = require 'path'
 walk            = require 'walk'
 optparse        = require './optparse'
 {spawn, exec}   = require 'child_process'
-Cordjs          = require './Cordjs'
+Cordjs          = require './cordjs'
 
 util = require 'util'
 publicDir   = 'public'
