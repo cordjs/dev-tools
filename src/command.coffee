@@ -60,7 +60,7 @@ mainCommand = ->
     Cordjs.utils.timeLog "Output directory created '#{outputDir}'"
     countFiles = 0
     syncFiles publicDir, path.normalize(publicDir), ->
-      exec "coffee -bco #{path.join outputDir, publicDir} #{publicDir}", (e)->
+      exec "coffee -bco #{path.join outputDir, publicDir} #{publicDir}", (e) ->
         exec "sass --update #{publicDir}:#{path.join outputDir, publicDir}"
         return syncFiles 'node_modules', path.normalize('node_modules'), completeSync if options.build
         completeSync()
@@ -154,7 +154,7 @@ syncFile = (source, base, callback, onlyWatch = false) ->
         callback?()
     else
       Cordjs.utils.timeLog "Update file '#{ source }'" if onlyWatch
-      if options.dev
+      if options.dev or options.build
         copyFile source, base, (err) -> callback?()
       else
         countFiles--
