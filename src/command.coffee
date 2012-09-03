@@ -17,7 +17,7 @@ baseDirFull = null
 serverChild = null
 
 # Print if call without arguments
-EmptyArguments = '''Usage: cordjs [options] path/to/project -- [args]'''
+EmptyArguments = " #{ 'Usage:'.bold } cordjs [options] path/to/project -- [args] ".inverse
 
 # List of options flags
 OptionsList = [
@@ -56,23 +56,32 @@ mainCommand = ->
 
   removeDirSync outputDir
 
-  exec "mkdir -p #{ outputDir }", ->
+  Cordjs.sendCommand "mkdir -p #{ outputDir }", (error) ->
     Cordjs.utils.timeLog "Output directory created '#{outputDir}'"
     countFiles = 0
     syncFiles publicDir, path.normalize(publicDir), ->
-      exec "coffee -bco #{path.join outputDir, publicDir} #{publicDir}", (e) ->
-        exec "sass --update #{publicDir}:#{path.join outputDir, publicDir}"
-        return syncFiles 'node_modules', path.normalize('node_modules'), completeSync if options.build
-        completeSync()
+      Cordjs.sendCommand "coffee -bco #{path.join outputDir, publicDir} #{publicDir}", (error) ->
+        if error
+          Cordjs.utils.timeLogError 'Coffescript compiler'
+        else
+          exec "sass --update #{publicDir}:#{path.join outputDir, publicDir}", (error) ->
+            if error
+              Cordjs.utils.timeLogError 'Sass compiler'
+
+          return syncFiles 'node_modules', path.normalize('node_modules'), completeSync if options.build
+          completeSync()
 
   completeSync = ->
-    exec "coffee -bc -o #{ outputDir } server.coffee", ->
-      countFiles++
-      Cordjs.utils.timeLog "Synchronized #{ countFiles } files"
-      if options.server
-        pathToNodeInit = "#{ path.join baseDirFull, outputDir, publicDir, pathToNodeInit }"
+    Cordjs.sendCommand "coffee -bc -o #{ outputDir } server.coffee", (error) ->
+      if error
+        Cordjs.utils.timeLogError 'Coffescript compiler'
+      else
+        countFiles++
+        Cordjs.utils.timeLog "Synchronized #{ countFiles } files"
+        if options.server
+          pathToNodeInit = "#{ path.join baseDirFull, outputDir, publicDir, pathToNodeInit }"
 
-        startServer()
+          startServer()
 
 # other commands - create project, bundle, etc
 otherCommand = (type, command, args) ->
@@ -205,7 +214,10 @@ watchFile = (source, base, symbolicLink) ->
       catch e
         removeSource source, base, yes
         Cordjs.utils.timeLog "Remove file '#{ source }'"
-    else throw e
+    else
+      if e.code is 'EMFILE'
+        Cordjs.utils.timeLogError "Max limit opened files. Try change limit. #{ 'For mac use: ulimit -n 65536'.yellow }"
+      throw e
 
   sync = ->
     clearTimeout syncTimeout
@@ -248,6 +260,7 @@ watchDir = (source, base) ->
             sources.push file
             syncFiles file, base
   catch e
+    console.log ':::;ee:: ', e
     throw e unless e.code is 'ENOENT'
 
 # Unwatch and remove directory
@@ -308,7 +321,7 @@ usage = ->
 
 # Print the `--version` message and exit
 version = ->
-  printLine "Cordjs current version: #{Cordjs.VERSION}"
+  printLine "Cordjs current version: #{Cordjs.VERSION.green}"
 
 # Convenience for cleaner setTimeouts
 wait = (milliseconds, func) -> setTimeout func, milliseconds

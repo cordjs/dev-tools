@@ -3,9 +3,10 @@ util  = require 'util'
 path  = require 'path'
 sys   = require 'sys'
 {spawn, exec}   = require 'child_process'
+colors = require 'colors'
 
 # The current version number
-exports.VERSION = '0.0.6'
+exports.VERSION = '0.0.7'
 
 Generator = {
   collection: {}
@@ -36,11 +37,17 @@ projectGenerator = (command, args) ->
       sendCommand "git clone https://github.com/cordjs/cordjs.git .", ->
         createDir 'public/bundles/cord'
         createDir 'public/bundles/cord/core'
-        console.log 'Cloning core...'
+        utils.timeLog 'Cloning core...'
         sendCommand "git clone https://github.com/cordjs/core.git public/bundles/cord/core"
 
     when "update"
-      sendCommand "git pull"
+      return utils.timeLogError 'Can\'t find public!' if !fs.existsSync 'public'
+      utils.timeLog 'Update based project layout...'
+      sendCommand "git pull", ->
+        return utils.timeLogError 'Can\'t find cord/core!' if !fs.existsSync 'public/bundles/cord/core'
+        utils.timeLog 'Update core...'
+        sendCommand "cd public/bundles/cord; git pull; cd -", ->
+
 
 # Bundle commands
 bundleGenerator = (command, args) ->
@@ -72,15 +79,18 @@ createDir = (dir) ->
 sendCommand = (command, callback) ->
   exec command, (error, stdout, stderr) ->
     if error
-      console.log "#{ error }"
+      utils.timeLogError "#{ error }"
     else
-      console.log stdout if stdout
+      utils.timeLog stdout if stdout
 
     callback?(arguments...)
 
+exports.sendCommand = sendCommand
+
 # Utilites
 utils = {
-  timeLog: (message) -> console.log "#{(new Date).toLocaleTimeString()} - #{message}"
-  timeLogError: (message) -> console.log ""
+  time: (new Date).toLocaleTimeString()
+  timeLog: (message) -> console.log "#{ utils.time } - #{ message }"
+  timeLogError: (message) -> console.log "#{ utils.time } - #{ 'ERROR:'.bold } #{ message }".red
 }
 exports.utils = utils
