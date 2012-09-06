@@ -164,12 +164,18 @@ syncFile = (source, base, callback, onlyWatch = false, symbolicLink) ->
   switch extname
     when ".coffee", ".scss", ".sass"
       if extname is ".coffee" and onlyWatch
-        exec "coffee -bc -o #{path.dirname outputPath(baseSource, base)} #{source}", ->
-          Cordjs.utils.timeLog "Update CoffeeScript '#{ baseSource }'"
+        Cordjs.sendCommand "coffee -bco #{path.dirname outputPath(baseSource, base)} #{source}", (error) ->
+          if error
+            Cordjs.utils.timeLogError "Coffescript compiler '#{ baseSource }'"
+          else
+            Cordjs.utils.timeLog "Update CoffeeScript '#{ baseSource }'"
           callback?()
       else if extname is (".scss" or ".sass") and onlyWatch
-        exec "sass --update #{path.dirname outputPath(baseSource, base)}:#{source}", ->
-          Cordjs.utils.timeLog "Update Saas '#{ baseSource }'"
+        exec "sass --update #{path.dirname outputPath(baseSource, base)}:#{source}", (error) ->
+          if error
+            Cordjs.utils.timeLogError 'Sass compiler'
+          else
+            Cordjs.utils.timeLog "Update Saas '#{ baseSource }'"
           callback?()
       else
         callback?()
