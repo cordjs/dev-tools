@@ -266,7 +266,6 @@ watchDir = (source, base) ->
             sources.push file
             syncFiles file, base
   catch e
-    console.log ':::;ee:: ', e
     throw e unless e.code is 'ENOENT'
 
 # Unwatch and remove directory
