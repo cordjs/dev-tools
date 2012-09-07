@@ -55,11 +55,11 @@ bundleGenerator = (command, args) ->
     when "create"
       bundleName = args.shift()
       if !bundleName
-        console.log 'Error: Empty bandle name'
+        utils.timeLogError 'Empty bandle name'
         process.exit()
 
       createDir path.join("public/bundles", bundleName)
-      console.log "Bundle #{ bundleName } create!"
+      utils.timeLog "Bundle #{ bundleName } create!"
 
 # Init def-generators
 Generator.init()
@@ -73,7 +73,6 @@ createDir = (dir) ->
   pathDir = path.join root, dir
   if !fs.existsSync pathDir
     fs.mkdirSync path.join(root, dir), '0755'
-#    console.log 'Create directory: ', dir
 
 # exec command-line
 sendCommand = (command, callback) ->
@@ -91,6 +90,7 @@ exports.sendCommand = sendCommand
 utils = {
   time: (new Date).toLocaleTimeString()
   timeLog: (message) -> console.log "#{ utils.time } - #{ message }"
-  timeLogError: (message) -> console.log "#{ utils.time } - #{ 'ERROR:'.bold } #{ message }".red
+  timeLogError: (message) -> console.log "#{ utils.time } - #{ utils.logError message }".red
+  logError: (message) -> console.log "#{ 'ERROR:'.bold } #{ message }".red
 }
 exports.utils = utils
