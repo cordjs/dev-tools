@@ -1,3 +1,5 @@
+`if (typeof define !== 'function') { var define = require('amdefine')(module) }`
+
 fs              = require 'fs'
 util            = require 'util'
 path            = require 'path'
@@ -5,16 +7,21 @@ walk            = require 'walk'
 optparse        = require './optparse'
 {spawn, exec}   = require 'child_process'
 Cordjs          = require './cordjs'
+util            = require 'util'
+requirejs       = require 'requirejs'
 
-util = require 'util'
-publicDir   = 'public'
-outputDir   = 'target'
-options     = {}
-sources     = []
-countFiles  = null
-pathToNodeInit = "/bundles/cord/core/nodeInit"
-baseDirFull = null
-serverChild = null
+publicDir             = 'public'
+outputDir             = 'target'
+options               = {}
+sources               = []
+widgetsWaitComliler   = []
+countFiles            = null
+baseDirFull           = null
+serverChild           = null
+
+pathToCore      = "/bundles/cord/core/"
+pathToNodeInit  = "#{ pathToCore }nodeInit"
+
 
 # Print if call without arguments
 EmptyArguments = " #{ 'Usage:'.bold } cordjs [options] path/to/project -- [args] ".inverse
@@ -76,12 +83,65 @@ mainCommand = ->
       if error
         Cordjs.utils.timeLogError 'Coffescript compiler'
       else
-        countFiles++
-        Cordjs.utils.timeLog "Synchronized #{ countFiles } files"
-        if options.server
-          pathToNodeInit = "#{ path.join baseDirFull, outputDir, publicDir, pathToNodeInit }"
+        initCompileWidgets ->
+          countFiles++
+          Cordjs.utils.timeLog "Synchronized #{ countFiles } files"
+          if options.server
+            pathToNodeInit = "#{ path.join baseDirFull, outputDir, publicDir, pathToNodeInit }"
 
-          startServer()
+            startServer()
+
+  initCompileWidgets = (callback) ->
+    configPaths = require "#{ path.join baseDirFull, outputDir, publicDir, pathToCore }configPaths"
+
+    baseUrl = path.join outputDir, publicDir
+    requirejs.config
+      baseUrl: baseUrl
+      nodeRequire: require
+
+    requirejs [
+      "cord!config"
+    ], (config) ->
+      config.PUBLIC_PREFIX = baseUrl
+
+    requirejs.config configPaths
+
+    widgetsWaitComliler = []
+    widgetsPaths = {}
+
+    for source in sources
+      extname = path.extname source
+      if extname is '.coffee' and parseInt(source.indexOf '/widgets/') > 0
+        dirname = path.dirname source
+        dirname = dirname.replace 'public/bundles', ''
+        dirname = dirname.replace '/widgets/', '//'
+        if !widgetsPaths[dirname]
+          widgetsPaths[dirname] = dirname
+          widgetsWaitComliler.push dirname
+
+    compileWidget callback
+
+
+compileWidget = (callback) ->
+  widgetName = widgetsWaitComliler.pop()
+  if !widgetName?
+    return callback?()
+
+  requirejs [
+    "cord!config"
+    "cord-w!#{ widgetName }"
+    "cord!widgetCompiler"
+  ], (WidgetClass, widgetCompiler, config) =>
+
+    widget = new WidgetClass true
+    widgetCompiler.reset widget
+
+    widget.compileTemplate (err, output) =>
+      if err then throw err
+      tmplFullPath = "./#{ config.PUBLIC_PREFIX }/bundles/#{ widget.getTemplatePath() }.structure.json"
+
+      fs.writeFile tmplFullPath, widgetCompiler.getStructureCode(false), (err)->
+        compileWidget callback
 
 # other commands - create project, bundle, etc
 otherCommand = (type, command, args) ->
@@ -89,6 +149,7 @@ otherCommand = (type, command, args) ->
     Cordjs.Generator.do type, command, args
   else
     console.log "Generator #{ type } not found. Available generators: #{ Cordjs.Generator.list() }"
+
 
 create = (type) ->
   type = type.shift()
