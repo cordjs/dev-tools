@@ -1,5 +1,3 @@
-`if (typeof define !== 'function') { var define = require('amdefine')(module) }`
-
 fs              = require 'fs'
 util            = require 'util'
 path            = require 'path'
