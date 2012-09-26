@@ -112,12 +112,23 @@ mainCommand = ->
         if extname is '.coffee' and parseInt(source.indexOf '/widgets/') > 0
           dirname = path.dirname source
           dirname = dirname.replace 'public/bundles', ''
-          dirname = dirname.replace '/widgets/', '//'
+          dirname = getWidgetPath(dirname.replace '/widgets/', '//')
+
           if !widgetsPaths[dirname]
             widgetsPaths[dirname] = dirname
             widgetsWaitComliler.push dirname
 
       compileWidget callback
+
+
+getWidgetPath = (source) ->
+  widgetClassName = path.basename(source)
+  widgetClassName = widgetClassName.charAt(0).toUpperCase() + widgetClassName.slice(1)
+
+  pathToWidget = source.split('/')
+  pathToWidget.pop()
+
+  "#{ pathToWidget.join('/') }/#{ widgetClassName }"
 
 
 compileWidget = (callback) ->
