@@ -97,27 +97,27 @@ mainCommand = ->
       baseUrl: baseUrl
       nodeRequire: require
 
+    requirejs.config configPaths
+
     requirejs [
       "cord!config"
     ], (config) ->
       config.PUBLIC_PREFIX = baseUrl
 
-    requirejs.config configPaths
+      widgetsWaitComliler = []
+      widgetsPaths = {}
 
-    widgetsWaitComliler = []
-    widgetsPaths = {}
+      for source in sources
+        extname = path.extname source
+        if extname is '.coffee' and parseInt(source.indexOf '/widgets/') > 0
+          dirname = path.dirname source
+          dirname = dirname.replace 'public/bundles', ''
+          dirname = dirname.replace '/widgets/', '//'
+          if !widgetsPaths[dirname]
+            widgetsPaths[dirname] = dirname
+            widgetsWaitComliler.push dirname
 
-    for source in sources
-      extname = path.extname source
-      if extname is '.coffee' and parseInt(source.indexOf '/widgets/') > 0
-        dirname = path.dirname source
-        dirname = dirname.replace 'public/bundles', ''
-        dirname = dirname.replace '/widgets/', '//'
-        if !widgetsPaths[dirname]
-          widgetsPaths[dirname] = dirname
-          widgetsWaitComliler.push dirname
-
-    compileWidget callback
+      compileWidget callback
 
 
 compileWidget = (callback) ->
@@ -126,9 +126,9 @@ compileWidget = (callback) ->
     return callback?()
 
   requirejs [
-    "cord!config"
     "cord-w!#{ widgetName }"
     "cord!widgetCompiler"
+    "cord!config"
   ], (WidgetClass, widgetCompiler, config) =>
 
     widget = new WidgetClass true
