@@ -110,9 +110,7 @@ mainCommand = ->
       for source in sources
         extname = path.extname source
         if extname is '.coffee' and parseInt(source.indexOf '/widgets/') > 0
-          dirname = path.dirname source
-          dirname = dirname.replace 'public/bundles', ''
-          dirname = getWidgetPath(dirname.replace '/widgets/', '//')
+          dirname = getWidgetPath source
 
           if !widgetsPaths[dirname]
             widgetsPaths[dirname] = dirname
@@ -122,13 +120,17 @@ mainCommand = ->
 
 
 getWidgetPath = (source) ->
-  widgetClassName = path.basename(source)
+  source = path.dirname source
+  source = source.replace 'public/bundles', ''
+  source = source.replace '/widgets/', '//'
+
+  widgetClassName = path.basename source
   widgetClassName = widgetClassName.charAt(0).toUpperCase() + widgetClassName.slice(1)
 
-  pathToWidget = source.split('/')
+  pathToWidget = source.split '/'
   pathToWidget.pop()
 
-  "#{ pathToWidget.join('/') }/#{ widgetClassName }"
+  "#{ pathToWidget.join '/' }/#{ widgetClassName }"
 
 
 compileWidget = (callback) ->
@@ -231,33 +233,45 @@ syncFile = (source, base, callback, onlyWatch = false, symbolicLink) ->
   sources.push baseSource                   if !onlyWatch
   watchFile baseSource, base, symbolicLink  if !onlyWatch and options.watch
   extname = path.extname baseSource
+
+  if onlyWatch
+    widgetsWaitComliler.push getWidgetPath(source)
+
+  completeSync = ->
+    compileWidget callback
+
   switch extname
     when ".coffee", ".scss", ".sass"
+
       if extname is ".coffee" and onlyWatch
         Cordjs.sendCommand "coffee -bco #{path.dirname outputPath(baseSource, base)} #{source}", (error) ->
           if error
             Cordjs.utils.timeLogError "Coffescript compiler '#{ baseSource }'"
           else
             Cordjs.utils.timeLog "Update CoffeeScript '#{ baseSource }'"
-          callback?()
+          completeSync()
+
       else if extname is (".scss" or ".sass") and onlyWatch
         exec "sass --update #{path.dirname outputPath(baseSource, base)}:#{source}", (error) ->
           if error
             Cordjs.utils.timeLogError 'Sass compiler'
           else
             Cordjs.utils.timeLog "Update Saas '#{ baseSource }'"
-          callback?()
+          completeSync()
+
       else
-        callback?()
+        completeSync()
+
     else
       Cordjs.utils.timeLog "Update file '#{ baseSource }'" if onlyWatch
       if options.dev or options.build
         copyFile source, base, (err) ->
-          callback?()
+          completeSync()
         , symbolicLink
+
       else
         countFiles--
-        callback?()
+        completeSync()
 
 # Copy file to targetPath
 copyFile = (source, base, callback, symbolicLink) ->
