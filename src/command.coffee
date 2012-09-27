@@ -171,8 +171,6 @@ create = (type) ->
   else if !Cordjs.creator.exist type
     console.log "Generator #{ type } not found"
 
-  console.log 'type: ', type
-
 # start server
 startServer = ->
   serverChild = spawn "node", [path.join(outputDir, 'server.js'), path.join(outputDir, publicDir)]
@@ -234,7 +232,7 @@ syncFile = (source, base, callback, onlyWatch = false, symbolicLink) ->
   watchFile baseSource, base, symbolicLink  if !onlyWatch and options.watch
   extname = path.extname baseSource
 
-  if onlyWatch
+  if onlyWatch and parseInt(source.indexOf '/widgets/') > 0
     widgetsWaitComliler.push getWidgetPath(source)
 
   completeSync = ->
@@ -346,7 +344,8 @@ watchDir = (source, base) ->
           for file in files
             file = path.join source, file
             continue if sources.some (s) -> s.indexOf(file) >= 0
-            Cordjs.utils.timeLog "Add file '#{ source }'"
+            continue if hidden file
+            Cordjs.utils.timeLog "Add file '#{ file }'"
             sources.push file
             syncFiles file, base
   catch e
