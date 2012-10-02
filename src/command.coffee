@@ -13,7 +13,10 @@ outputDir             = 'target'
 options               = {}
 sources               = []
 widgetsWaitComliler   = []
-countFiles            = null
+counters =
+  syncFiles: 0
+  copiesFiles: 0
+
 baseDirFull           = null
 serverChild           = null
 
@@ -28,6 +31,7 @@ EmptyArguments = " #{ 'Usage:'.bold } cordjs [options] path/to/project -- [args]
 OptionsList = [
   ['-a', '--autorestart',     'autorestart server']
   ['-b', '--build',           'build project']
+  ['-c', '--clean',           'clean target']
   ['-d', '--dev',             'development mode - copy all files to the outputDir']
   ['-h', '--help',            'display this help message']
   ['-o', '--output [DIR]',    'output directory']
@@ -50,25 +54,36 @@ exports.run = ->
     outputDir = options.output  if options.output
     mainCommand()
 
-# main commans - build, compile, watch, startserver, etc.
+
+timeStart = timeEnd = null
+
+_startTimer = ->
+  timeStart = new Date()
+
+_endTimer = ->
+  timeEnd = new Date()
+  Cordjs.utils.timeLog "Timer: " + ( timeEnd - timeStart ) + " milliseconds"
+
+# main commans - build, clean, compile, watch, startserver, etc.
 mainCommand = ->
-  try
-    baseDirFull = path.dirname( fs.realpathSync publicDir )
-  catch e
-    if e.code is 'ENOENT'
-      Cordjs.utils.timeLog "Error: no such public directory '#{publicDir}'"
-      return false
+  return false if !testCommandDir()
+  removeDirSync outputDir if options.clean
 
-  removeDirSync outputDir
+  _startTimer()
 
-  Cordjs.sendCommand "mkdir -p #{ outputDir }", (error) ->
-    Cordjs.utils.timeLog "Output directory created '#{outputDir}'"
-    countFiles = 0
+  createDir (outputDir), (existDir) ->
+    Cordjs.utils.timeLog "Output directory created '#{outputDir}'" if !existDir
+
+    counters.syncFiles =
+    counters.copiesFiles = 0
+
     syncFiles publicDir, path.normalize(publicDir), ->
+
       Cordjs.sendCommand "coffee -bco #{path.join outputDir, publicDir} #{publicDir}", (error) ->
         if error
           Cordjs.utils.timeLogError 'Coffescript compiler'
         else
+          updateCoffeeTimestamp sources
           exec "sass --update #{publicDir}:#{path.join outputDir, publicDir}", (error) ->
             if error
               Cordjs.utils.timeLogError 'Sass compiler'
@@ -76,14 +91,27 @@ mainCommand = ->
           return syncFiles 'node_modules', path.normalize('node_modules'), completeSync if options.build
           completeSync()
 
+  updateCoffeeTimestamp = (sources) ->
+    for source in sources
+      do (source) =>
+        extname = path.extname source
+        if extname is '.coffee'
+          outputSource = outputPath source, path.normalize publicDir
+          fs.stat source, (err, stat) ->
+            try
+              fs.utimesSync outputSource, stat.atime, stat.mtime
+
   completeSync = ->
     Cordjs.sendCommand "coffee -bc -o #{ outputDir } server.coffee", (error) ->
       if error
         Cordjs.utils.timeLogError 'Coffescript compiler'
       else
+        counters.syncFiles++
+        counters.copiesFiles++
         initCompileWidgets ->
-          countFiles++
-          Cordjs.utils.timeLog "Synchronized #{ countFiles } files"
+          Cordjs.utils.timeLog "Sync files is complete! Total #{ counters.syncFiles } files, #{ counters.copiesFiles  } files copied"
+          _endTimer()
+
           if options.server
             pathToNodeInit = "#{ path.join baseDirFull, outputDir, publicDir, pathToNodeInit }"
 
@@ -98,6 +126,8 @@ mainCommand = ->
       nodeRequire: require
 
     requirejs.config configPaths
+
+    basePath = path.normalize publicDir
 
     requirejs [
       "cord!config"
@@ -114,10 +144,34 @@ mainCommand = ->
 
           if !widgetsPaths[dirname]
             widgetsPaths[dirname] = dirname
+
+            outputSource = outputPath source, basePath
+#            if isDiffSource source, outputPath(source, basePath)
             widgetsWaitComliler.push dirname
 
+#      console.log widgetsWaitComliler
       compileWidget callback
 
+testCommandDir = ->
+  try
+    baseDirFull = path.dirname( fs.realpathSync publicDir )
+    true
+  catch e
+    if e.code is 'ENOENT'
+      Cordjs.utils.timeLog "Error: no such public directory '#{publicDir}'"
+    false
+
+createDir = (dir, callback) ->
+  try
+    dirFull = path.dirname( fs.realpathSync dir )
+    callback?(dirFull)
+  catch e
+    if e.code is 'ENOENT'
+      Cordjs.sendCommand "mkdir -p #{ dir }", (error) ->
+        if error
+          util.print error
+
+        callback?()
 
 getWidgetPath = (source) ->
   source = path.dirname source
@@ -207,7 +261,7 @@ syncFiles = (source, base, callback) ->
       source = path.join root, stat.name
       return next() if hidden source
       syncFile source, base, ->
-        countFiles++
+        counters.syncFiles++
         next()
       next()
 
@@ -217,7 +271,7 @@ syncFiles = (source, base, callback) ->
       source = path.join dirname, fs.readlinkSync(symbolicLink)
       return next() if hidden symbolicLink
       syncFile source, base, ->
-        countFiles++
+        counters.syncFiles++
         next()
       , false, symbolicLink
       next()
@@ -240,7 +294,7 @@ syncFile = (source, base, callback, onlyWatch = false, symbolicLink) ->
 
   switch extname
     when ".coffee", ".scss", ".sass"
-
+      counters.copiesFiles++ if !onlyWatch
       if extname is ".coffee" and onlyWatch
         Cordjs.sendCommand "coffee -bco #{path.dirname outputPath(baseSource, base)} #{source}", (error) ->
           if error
@@ -261,15 +315,16 @@ syncFile = (source, base, callback, onlyWatch = false, symbolicLink) ->
         completeSync()
 
     else
-      Cordjs.utils.timeLog "Update file '#{ baseSource }'" if onlyWatch
-      if options.dev or options.build
-        copyFile source, base, (err) ->
-          completeSync()
-        , symbolicLink
-
+      if onlyWatch
+        Cordjs.utils.timeLog "Update file '#{ baseSource }'"
       else
-        countFiles--
-        completeSync()
+        if options.dev or options.build
+          copyFile source, base, (err) ->
+            completeSync()
+          , symbolicLink
+        else
+          counters.syncFiles--
+          completeSync()
 
 # Copy file to targetPath
 copyFile = (source, base, callback, symbolicLink) ->
@@ -279,12 +334,27 @@ copyFile = (source, base, callback, symbolicLink) ->
   copyHelper = () ->
     fs.stat source, (err, stat) ->
       callback? err if err
+
+      return callback?() if !isDiffSource source, filePath
+
       util.pump fs.createReadStream(source), fs.createWriteStream(filePath), (err) ->
         callback? err if err
+        counters.copiesFiles++
         fs.utimes filePath, stat.atime, stat.mtime, callback
 
   exists fileDir, (itExists) ->
     if itExists then copyHelper() else exec "mkdir -p #{fileDir}", copyHelper
+
+# Check diffents source
+isDiffSource = ( baseSource, outputSource, baseStat, outputStat ) ->
+  baseStat = fs.statSync baseSource if !baseStat?
+  try
+    outputStat = fs.statSync outputSource if !outputStat?
+    if path.extname(baseSource) is '.coffee'
+      return false if baseStat.mtime.getTime() is outputStat.mtime.getTime()
+    else
+      return false if outputStat.size is baseStat.size and baseStat.mtime.getTime() is outputStat.mtime.getTime()
+  return true
 
 # Watch a source file using `fs.watch`, recompiling it every
 # time the file is updated.
@@ -388,6 +458,7 @@ removeDirSync = (source) ->
 # Get output path
 outputPath = (source, base) ->
   filename  = path.basename source
+  filename = path.basename(source, path.extname(source)) + '.js' if path.extname(source) is '.coffee'
   srcDir    = path.dirname source
 #  baseDir   = if base is '.' then srcDir else srcDir.substring base.length
   baseDir   = srcDir
