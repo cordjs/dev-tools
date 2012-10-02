@@ -6,7 +6,7 @@ sys   = require 'sys'
 colors = require 'colors'
 
 # The current version number
-exports.VERSION = '0.0.99'
+exports.VERSION = '0.1.0'
 
 Generator = {
   collection: {}
@@ -88,9 +88,10 @@ exports.sendCommand = sendCommand
 
 # Utilites
 utils = {
-  time: (new Date).toLocaleTimeString()
-  timeLog: (message) -> console.log "#{ utils.time } - #{ message }"
-  timeLogError: (message) -> console.log "#{ utils.time } - #{ utils.logError message }".red
-  logError: (message) -> console.log "#{ 'ERROR:'.bold } #{ message }".red
+  time:         (new Date).toLocaleTimeString()
+  timeLog:      (message) -> console.log "#{ utils.time } - #{ message }"
+  timeLogError: (message, text = '') -> console.log "#{ utils.time } - ".red + "#{ utils.textError message } #{ text }"
+  logError:     (message) -> console.log utils.textError( message )
+  textError:    (message) -> "#{ 'ERROR:'.bold } #{ message }".red
 }
 exports.utils = utils

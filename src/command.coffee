@@ -5,6 +5,7 @@ walk            = require 'walk'
 optparse        = require './optparse'
 {spawn, exec}   = require 'child_process'
 Cordjs          = require './cordjs'
+CoffeeScript    = require './coffee-script'
 util            = require 'util'
 requirejs       = require 'requirejs'
 
@@ -13,12 +14,14 @@ outputDir             = 'target'
 options               = {}
 sources               = []
 widgetsWaitComliler   = []
-counters =
-  syncFiles: 0
-  copiesFiles: 0
+aFiles =
+  sync: []
+  copy: []
 
-baseDirFull           = null
-serverChild           = null
+baseDirFull     = null
+serverChild     = null
+timeStart       =
+timeEnd         = null
 
 pathToCore      = "/bundles/cord/core/"
 pathToNodeInit  = "#{ pathToCore }nodeInit"
@@ -26,6 +29,7 @@ pathToNodeInit  = "#{ pathToCore }nodeInit"
 
 # Print if call without arguments
 EmptyArguments = " #{ 'Usage:'.bold } cordjs [options] path/to/project -- [args] ".inverse
+
 
 # List of options flags
 OptionsList = [
@@ -39,6 +43,7 @@ OptionsList = [
   ['-v', '--version',         'display the version number']
   ['-w', '--watch',           'watch scripts for changes and rerun commands']
 ]
+
 
 # Entry
 exports.run = ->
@@ -55,15 +60,6 @@ exports.run = ->
     mainCommand()
 
 
-timeStart = timeEnd = null
-
-_startTimer = ->
-  timeStart = new Date()
-
-_endTimer = ->
-  timeEnd = new Date()
-  Cordjs.utils.timeLog "Timer: " + ( timeEnd - timeStart ) + " milliseconds"
-
 # main commans - build, clean, compile, watch, startserver, etc.
 mainCommand = ->
   return false if !testCommandDir()
@@ -74,48 +70,39 @@ mainCommand = ->
   createDir (outputDir), (existDir) ->
     Cordjs.utils.timeLog "Output directory created '#{outputDir}'" if !existDir
 
-    counters.syncFiles =
-    counters.copiesFiles = 0
+    aFiles.sync = []
+    aFiles.compile = []
 
     syncFiles publicDir, path.normalize(publicDir), ->
+      exec "sass --update #{publicDir}:#{path.join outputDir, publicDir}", (error) ->
+        Cordjs.utils.timeLogError 'Sass compiler' if error?
 
-      Cordjs.sendCommand "coffee -bco #{path.join outputDir, publicDir} #{publicDir}", (error) ->
-        if error
-          Cordjs.utils.timeLogError 'Coffescript compiler'
-        else
-          updateCoffeeTimestamp sources
-          exec "sass --update #{publicDir}:#{path.join outputDir, publicDir}", (error) ->
-            if error
-              Cordjs.utils.timeLogError 'Sass compiler'
+        return syncFiles 'node_modules', path.normalize('node_modules'), completeSync if options.build
+        completeSync()
 
-          return syncFiles 'node_modules', path.normalize('node_modules'), completeSync if options.build
-          completeSync()
-
-  updateCoffeeTimestamp = (sources) ->
-    for source in sources
-      do (source) =>
-        extname = path.extname source
-        if extname is '.coffee'
-          outputSource = outputPath source, path.normalize publicDir
-          fs.stat source, (err, stat) ->
-            try
-              fs.utimesSync outputSource, stat.atime, stat.mtime
+#  updateCoffeeTimestamp = (sources) ->
+#    for source in sources
+#      do (source) =>
+#        extname = path.extname source
+#        if extname is '.coffee'
+#          outputSource = outputPath source, path.normalize publicDir
+#          fs.stat source, (err, stat) ->
+#            try
+#              fs.utimesSync outputSource, stat.atime, stat.mtime
 
   completeSync = ->
-    Cordjs.sendCommand "coffee -bc -o #{ outputDir } server.coffee", (error) ->
-      if error
-        Cordjs.utils.timeLogError 'Coffescript compiler'
-      else
-        counters.syncFiles++
-        counters.copiesFiles++
-        initCompileWidgets ->
-          Cordjs.utils.timeLog "Sync files is complete! Total #{ counters.syncFiles } files, #{ counters.copiesFiles  } files copied"
-          _endTimer()
+    syncFiles 'server.coffee', '.', ->
+      initCompileWidgets ->
+        countCompiled = (if aFiles.compile.length then "#{ aFiles.compile.length  }".green else "#{ aFiles.compile.length  }".grey)
+        Cordjs.utils.timeLog "Sync files is complete! Total " + "#{ aFiles.sync.length }".yellow + " files, #{ countCompiled } files compiled"
+        Cordjs.utils.timeLog "Compiled files: " + "#{ aFiles.compile.join ', ' }".yellow  if !options.clean and aFiles.compile.length
+        options.started = true
+        _endTimer()
 
-          if options.server
-            pathToNodeInit = "#{ path.join baseDirFull, outputDir, publicDir, pathToNodeInit }"
+        if options.server
+          pathToNodeInit = "#{ path.join baseDirFull, outputDir, publicDir, pathToNodeInit }"
+          startServer()
 
-            startServer()
 
   initCompileWidgets = (callback) ->
     configPaths = require "#{ path.join baseDirFull, outputDir, publicDir, pathToCore }configPaths"
@@ -145,12 +132,11 @@ mainCommand = ->
           if !widgetsPaths[dirname]
             widgetsPaths[dirname] = dirname
 
-            outputSource = outputPath source, basePath
-#            if isDiffSource source, outputPath(source, basePath)
-            widgetsWaitComliler.push dirname
+            if options.clean or isDiffSource path.dirname(source), outputPath(path.dirname(source), basePath)
+              widgetsWaitComliler.push dirname
 
-#      console.log widgetsWaitComliler
       compileWidget callback
+
 
 testCommandDir = ->
   try
@@ -161,6 +147,7 @@ testCommandDir = ->
       Cordjs.utils.timeLog "Error: no such public directory '#{publicDir}'"
     false
 
+
 createDir = (dir, callback) ->
   try
     dirFull = path.dirname( fs.realpathSync dir )
@@ -170,8 +157,8 @@ createDir = (dir, callback) ->
       Cordjs.sendCommand "mkdir -p #{ dir }", (error) ->
         if error
           util.print error
-
         callback?()
+
 
 getWidgetPath = (source) ->
   source = path.dirname source
@@ -203,10 +190,14 @@ compileWidget = (callback) ->
 
     widget.compileTemplate (err, output) =>
       if err then throw err
-      tmplFullPath = "./#{ config.PUBLIC_PREFIX }/bundles/#{ widget.getTemplatePath() }.structure.json"
+      source = "#{ publicDir }/bundles/#{ widget.getTemplatePath() }.structure.json"
+      outputSource = outputPath source, path.normalize( publicDir )
 
-      fs.writeFile tmplFullPath, widgetCompiler.getStructureCode(false), (err)->
+      fs.writeFile outputSource, widgetCompiler.getStructureCode(false), (err)->
+        fs.stat path.dirname( source ), (err, stat) =>
+          fs.utimes path.dirname( outputSource ), stat.atime, stat.mtime
         compileWidget callback
+
 
 # other commands - create project, bundle, etc
 otherCommand = (type, command, args) ->
@@ -225,6 +216,7 @@ create = (type) ->
   else if !Cordjs.creator.exist type
     console.log "Generator #{ type } not found"
 
+
 # start server
 startServer = ->
   serverChild = spawn "node", [path.join(outputDir, 'server.js'), path.join(outputDir, publicDir)]
@@ -235,9 +227,11 @@ startServer = ->
   serverChild.stderr.on 'data', (error) ->
     util.print error
 
+
 # stop server
 stopServer = ->
   serverChild?.kill()
+
 
 # restart server
 restartServer = ->
@@ -245,10 +239,14 @@ restartServer = ->
   startServer()
   Cordjs.utils.timeLog 'Server restarted'
 
+
 # Synchronize files
 syncFiles = (source, base, callback) ->
   fs.stat source, (err, stats) ->
-    return syncFile source, base if stats.isFile()
+    if stats.isFile()
+      return syncFile source, base, ->
+        aFiles.sync.push source
+        callback?()
 
     walker = walk.walk source, { followLinks: false }
     walker.on 'directory', (root, stat, next) ->
@@ -261,7 +259,7 @@ syncFiles = (source, base, callback) ->
       source = path.join root, stat.name
       return next() if hidden source
       syncFile source, base, ->
-        counters.syncFiles++
+        aFiles.sync.push source
         next()
       next()
 
@@ -271,13 +269,14 @@ syncFiles = (source, base, callback) ->
       source = path.join dirname, fs.readlinkSync(symbolicLink)
       return next() if hidden symbolicLink
       syncFile source, base, ->
-        counters.syncFiles++
+        aFiles.sync.push source
         next()
       , false, symbolicLink
       next()
 
     walker.on 'end', ->
       callback?()
+
 
 # Synchronize target-file with the source
 syncFile = (source, base, callback, onlyWatch = false, symbolicLink) ->
@@ -292,69 +291,77 @@ syncFile = (source, base, callback, onlyWatch = false, symbolicLink) ->
   completeSync = ->
     compileWidget callback
 
-  switch extname
-    when ".coffee", ".scss", ".sass"
-      counters.copiesFiles++ if !onlyWatch
-      if extname is ".coffee" and onlyWatch
-        Cordjs.sendCommand "coffee -bco #{path.dirname outputPath(baseSource, base)} #{source}", (error) ->
-          if error
-            Cordjs.utils.timeLogError "Coffescript compiler '#{ baseSource }'"
-          else
-            Cordjs.utils.timeLog "Update CoffeeScript '#{ baseSource }'"
-          completeSync()
+  if extname is ".scss" or extname is ".sass"
 
-      else if extname is (".scss" or ".sass") and onlyWatch
-        exec "sass --update #{path.dirname outputPath(baseSource, base)}:#{source}", (error) ->
-          if error
-            Cordjs.utils.timeLogError 'Sass compiler'
-          else
-            Cordjs.utils.timeLog "Update Saas '#{ baseSource }'"
-          completeSync()
+    if !options.started
+      aFiles.compile.push source
+      return completeSync()
 
+    exec "sass --update #{path.dirname outputPath(baseSource, base)}:#{source}", (error) ->
+      if error?
+        Cordjs.utils.timeLogError "Sass: #{ source }"
       else
-        completeSync()
+        Cordjs.utils.timeLog "Update Saas '#{ source }'"
 
-    else
-      if onlyWatch
-        Cordjs.utils.timeLog "Update file '#{ baseSource }'"
-      else
-        if options.dev or options.build
-          copyFile source, base, (err) ->
-            completeSync()
-          , symbolicLink
-        else
-          counters.syncFiles--
-          completeSync()
+      completeSync()
+
+  else if options.dev or options.build
+    copyFile source, base, (err) ->
+      completeSync()
+    , symbolicLink
+  else
+    completeSync()
+
 
 # Copy file to targetPath
 copyFile = (source, base, callback, symbolicLink) ->
   filePath = outputPath (if symbolicLink then symbolicLink else source), base
   fileDir  = path.dirname filePath
 
+  sourceStat = null
+
+  copyCallback = ->
+    aFiles.compile.push source
+    fs.utimes filePath, sourceStat.atime, sourceStat.mtime, callback
+    fs.stat path.dirname( source ), (err, stat) =>
+      fs.utimes fileDir, stat.atime, stat.mtime
+
+    Cordjs.utils.timeLog "Update file '#{ source }'" if options.started and options.watch
+
   copyHelper = () ->
-    fs.stat source, (err, stat) ->
+    fs.stat source, (err, stat) =>
+      sourceStat = stat
       callback? err if err
 
       return callback?() if !isDiffSource source, filePath
 
-      util.pump fs.createReadStream(source), fs.createWriteStream(filePath), (err) ->
-        callback? err if err
-        counters.copiesFiles++
-        fs.utimes filePath, stat.atime, stat.mtime, callback
+      if path.extname(source) is '.coffee'
+
+        CoffeeScript.compile source, base, options, (jsCode) ->
+          fs.writeFile filePath, jsCode, (err) ->
+            if err
+              printLine err.message
+            copyCallback()
+      else
+        util.pump fs.createReadStream(source), fs.createWriteStream(filePath), (err) ->
+          return callback? err if err?
+          copyCallback()
 
   exists fileDir, (itExists) ->
     if itExists then copyHelper() else exec "mkdir -p #{fileDir}", copyHelper
+
 
 # Check diffents source
 isDiffSource = ( baseSource, outputSource, baseStat, outputStat ) ->
   baseStat = fs.statSync baseSource if !baseStat?
   try
     outputStat = fs.statSync outputSource if !outputStat?
-    if path.extname(baseSource) is '.coffee'
+    if outputStat.isDirectory() or path.extname(baseSource) is '.coffee'
       return false if baseStat.mtime.getTime() is outputStat.mtime.getTime()
     else
       return false if outputStat.size is baseStat.size and baseStat.mtime.getTime() is outputStat.mtime.getTime()
   return true
+
 
 # Watch a source file using `fs.watch`, recompiling it every
 # time the file is updated.
@@ -399,6 +406,7 @@ watchFile = (source, base, symbolicLink) ->
     watcher?.close()
     watcher = fs.watch source, sync
 
+
 # Watch a directory of files for new adds
 watchDir = (source, base) ->
   readdirTimeout = null
@@ -421,12 +429,14 @@ watchDir = (source, base) ->
   catch e
     throw e unless e.code is 'ENOENT'
 
+
 # Unwatch and remove directory
 unwatchDir = (source, base) ->
   prevSources = sources[..]
   toRemove = (file for file in sources when file.indexOf(source) >= 0)
   removeSource file, base, yes for file in toRemove
   return unless sources.some (s, i) -> prevSources[i] isnt s
+
 
 # Remove source from targetPath
 removeSource = (source, base, remove) ->
@@ -439,6 +449,7 @@ removeSource = (source, base, remove) ->
         fs.unlink outPath, (err) ->
           throw err if err and err.code isnt 'ENOENT'
           Cordjs.utils.timeLog "removed #{source}"
+
 
 #Remove dir
 removeDirSync = (source) ->
@@ -455,15 +466,16 @@ removeDirSync = (source) ->
   catch e
     throw e unless e.code is 'ENOENT'
 
+
 # Get output path
 outputPath = (source, base) ->
   filename  = path.basename source
   filename = path.basename(source, path.extname(source)) + '.js' if path.extname(source) is '.coffee'
   srcDir    = path.dirname source
-#  baseDir   = if base is '.' then srcDir else srcDir.substring base.length
   baseDir   = srcDir
   dir       = path.join outputDir, baseDir
   path.join dir, filename
+
 
 # Use the OptionParser module to extract all options from
 # `process.argv` that are specified in `SWITCHES`.
@@ -472,15 +484,29 @@ parseOptions = (args) ->
   o = options  = optionParser.parse args
   if options.autorestart
     options.server = options.watch = true
+  options.started = false
   publicDir = o.arguments[0] if o.arguments.length
+
 
 # Print the `--help` usage message and exit
 usage = ->
   printLine (new optparse.OptionParser OptionsList, EmptyArguments).help()
 
+
+
 # Print the `--version` message and exit
 version = ->
   printLine "Cordjs current version: #{Cordjs.VERSION.green}"
+
+
+_startTimer = ->
+  timeStart = new Date()
+
+
+_endTimer = ->
+  timeEnd = new Date()
+  Cordjs.utils.timeLog "Timer: " + ( timeEnd - timeStart ) + " milliseconds"
+
 
 # Convenience for cleaner setTimeouts
 wait = (milliseconds, func) -> setTimeout func, milliseconds
@@ -490,4 +516,3 @@ hidden = (file) -> /\/\.|~$/.test(file) or /^\.|~$/.test file
 
 printLine = (line) -> process.stdout.write line + '\n'
 printWarn = (line) -> process.stderr.write line + '\n'
-
