@@ -2,7 +2,7 @@ fs              = require 'fs'
 util            = require 'util'
 path            = require 'path'
 walk            = require 'walk'
-optparse        = require './optparse'
+commander       = require 'commander'
 {spawn, exec}   = require 'child_process'
 Cordjs          = require './cordjs'
 CoffeeScript    = require './coffee-script'
@@ -11,7 +11,7 @@ requirejs       = require 'requirejs'
 
 publicDir = basePath  = 'public'
 outputDir             = 'target'
-options               = {}
+watchModeEnable       = false
 sources               = []
 widgetsWaitComliler   = []
 aFiles =
@@ -32,38 +32,43 @@ EmptyArguments = " #{ 'Usage:'.bold } cordjs [options] path/to/project -- [args]
 
 
 # List of options flags
-OptionsList = [
-  ['-a', '--autorestart',     'autorestart server']
-  ['-b', '--build',           'build project']
-  ['-c', '--clean',           'clean target']
-  ['-d', '--dev',             'development mode - copy all files to the outputDir']
-  ['-h', '--help',            'display this help message']
-  ['-o', '--output [DIR]',    'output directory']
-  ['-s', '--server',          'start server']
-  ['-v', '--version',         'display the version number']
-  ['-w', '--watch',           'watch scripts for changes and rerun commands']
-]
+commander
+  .option('-a, --autorestart',  'autorestart server')
+  .option('-b, --build',        'build project')
+  .option('-c, --clean',        'clean target')
+  .option('-d, --dev',          'development mode - copy all files to the outputDir')
+  .option('-o, --output [dir]', 'output directory [' + outputDir + ']', outputDir)
+  .option('-s, --server',       'start server')
+  .option('-w, --watch',        'watch scripts for changes and rerun commands')
+  .version(Cordjs.VERSION, '-v, --version')
 
 
 # Entry
 exports.run = ->
-  args = process.argv[2..]
-  type = args.shift().split ':'
-  command = type[1]
-  if command?
-    otherCommand type[0], command, args
-  else
-    parseOptions process.argv[2..]
-    return usage()              if options.help
-    return version()            if options.version
-    outputDir = options.output  if options.output
-    mainCommand()
+
+  commander
+    .parse(process.argv)
+
+  outputDir = commander.output                if commander.output
+  commander.server = commander.watch = true   if commander.autorestart
+
+  mainCommand()
+#  args = process.argv[2..]
+#  type = args.shift().split ':'
+#  command = type[1]
+#  if command?
+#    otherCommand type[0], command, args
+#  else
+#    parseOptions process.argv[2..]
+#    return usage()              if options.help
+#    return version()            if options.version
+#    outputDir = options.output  if options.output
 
 
 # main commans - build, clean, compile, watch, startserver, etc.
 mainCommand = ->
   return false if !testCommandDir()
-  removeDirSync outputDir if options.clean
+  removeDirSync outputDir if commander.clean
 
   _startTimer()
 
@@ -79,7 +84,7 @@ mainCommand = ->
       exec "sass --update #{publicDir}:#{path.join outputDir, publicDir}", (error) ->
         Cordjs.utils.timeLogError 'Sass compiler' if error?
 
-        return syncFiles 'node_modules', path.normalize('node_modules'), completeSync if options.build
+        return syncFiles 'node_modules', path.normalize('node_modules'), completeSync if commander.build
         completeSync()
 
 
@@ -88,17 +93,17 @@ mainCommand = ->
       initCompileWidgets ->
         countCompiled = (if aFiles.compile.length then "#{ aFiles.compile.length  }".green else "#{ aFiles.compile.length  }".grey)
         Cordjs.utils.timeLog "Sync files is complete! Total " + "#{ aFiles.sync.length }".yellow + " files, #{ countCompiled } files compiled"
-        Cordjs.utils.timeLog "Compiled files: " + "#{ aFiles.compile.join ', ' }".yellow  if !options.clean and aFiles.compile.length
-        options.started = true
+        Cordjs.utils.timeLog "Compiled files: " + "#{ aFiles.compile.join ', ' }".yellow  if !commander.clean and aFiles.compile.length
+        watchModeEnable = true if commander.watch
         _endTimer()
 
-        if options.server
+        if commander.server
           pathToNodeInit = "#{ path.join baseDirFull, outputDir, publicDir, pathToNodeInit }"
           startServer()
 
 
   initCompileWidgets = (callback) ->
-    return callback?() if !options.build && !options.dev
+    return callback?() if !commander.build && !commander.dev
     configPaths = require "#{ path.join baseDirFull, outputDir, publicDir, pathToCore }configPaths"
 
     baseUrl = path.join outputDir, publicDir
@@ -237,7 +242,7 @@ syncFiles = (source, base, callback) ->
     walker.on 'directory', (root, stat, next) ->
       source = path.join root, stat.name
       return next()           if hidden source
-      watchDir source, base   if options.watch
+      watchDir source, base   if commander.watch
       next()
 
     walker.on 'file', (root, stat, next) ->
@@ -267,19 +272,19 @@ syncFiles = (source, base, callback) ->
 syncFile = (source, base, callback, onlyWatch = false, symbolicLink) ->
   baseSource = (if symbolicLink then symbolicLink else source)
   sources.push baseSource                   if !onlyWatch
-  watchFile baseSource, base, symbolicLink  if !onlyWatch and options.watch
+  watchFile baseSource, base, symbolicLink  if !onlyWatch and commander.watch
   extname = path.extname baseSource
 
   if onlyWatch and parseInt(source.indexOf '/widgets/') > 0
     widgetsWaitComliler.push getWidgetPath(source)
 
   completeSync = ->
-    return callback?() if !options.started
+    return callback?() if !commander.watchModeEnable
     compileWidget callback
 
   if extname is ".scss" or extname is ".sass"
 
-    if !options.started
+    if !commander.watchModeEnable
       aFiles.compile.push source
       return completeSync()
 
@@ -291,7 +296,7 @@ syncFile = (source, base, callback, onlyWatch = false, symbolicLink) ->
 
       completeSync()
 
-  else if options.dev or options.build
+  else if commander.dev or commander.build
     copyFile source, base, (err) ->
       addWidgetWaitCompiler baseSource
       completeSync()
@@ -313,7 +318,7 @@ copyFile = (source, base, callback, symbolicLink) ->
     fs.stat path.dirname( source ), (err, stat) =>
       fs.utimes fileDir, stat.atime, stat.mtime
 
-    Cordjs.utils.timeLog "Update file '#{ source }'" if options.started and options.watch
+    Cordjs.utils.timeLog "Update file '#{ source }'" if commander.watchModeEnable
 
   copyHelper = () ->
     fs.stat source, (err, stat) =>
@@ -324,7 +329,7 @@ copyFile = (source, base, callback, symbolicLink) ->
 
       if path.extname(source) is '.coffee'
 
-        CoffeeScript.compile source, base, options, (jsCode) ->
+        CoffeeScript.compile source, base, commander, (jsCode) ->
           fs.writeFile filePath, jsCode, (err) ->
             if err
               printLine err.message
@@ -380,7 +385,7 @@ watchFile = (source, base, symbolicLink) ->
         stats.mtime.getTime() is prevStats.mtime.getTime()
         prevStats = stats
         syncFile source, base, () ->
-            restartServer() if options.server
+            restartServer() if commander.server
             rewatch()
         , yes, symbolicLink
 
@@ -462,28 +467,6 @@ outputPath = (source, base) ->
   baseDir   = srcDir
   dir       = path.join outputDir, baseDir
   path.join dir, filename
-
-
-# Use the OptionParser module to extract all options from
-# `process.argv` that are specified in `SWITCHES`.
-parseOptions = (args) ->
-  optionParser  = new optparse.OptionParser OptionsList, EmptyArguments
-  o = options  = optionParser.parse args
-  if options.autorestart
-    options.server = options.watch = true
-  options.started = false
-  publicDir = o.arguments[0] if o.arguments.length
-
-
-# Print the `--help` usage message and exit
-usage = ->
-  printLine (new optparse.OptionParser OptionsList, EmptyArguments).help()
-
-
-
-# Print the `--version` message and exit
-version = ->
-  printLine "Cordjs current version: #{Cordjs.VERSION.green}"
 
 
 _startTimer = ->
