@@ -9,7 +9,7 @@ CoffeeScript    = require './coffee-script'
 util            = require 'util'
 requirejs       = require 'requirejs'
 
-publicDir             = 'public'
+publicDir = basePath  = 'public'
 outputDir             = 'target'
 options               = {}
 sources               = []
@@ -73,22 +73,15 @@ mainCommand = ->
     aFiles.sync = []
     aFiles.compile = []
 
-    syncFiles publicDir, path.normalize(publicDir), ->
+    basePath = path.normalize publicDir
+
+    syncFiles publicDir, basePath, ->
       exec "sass --update #{publicDir}:#{path.join outputDir, publicDir}", (error) ->
         Cordjs.utils.timeLogError 'Sass compiler' if error?
 
         return syncFiles 'node_modules', path.normalize('node_modules'), completeSync if options.build
         completeSync()
 
-#  updateCoffeeTimestamp = (sources) ->
-#    for source in sources
-#      do (source) =>
-#        extname = path.extname source
-#        if extname is '.coffee'
-#          outputSource = outputPath source, path.normalize publicDir
-#          fs.stat source, (err, stat) ->
-#            try
-#              fs.utimesSync outputSource, stat.atime, stat.mtime
 
   completeSync = ->
     syncFiles 'server.coffee', '.', ->
@@ -105,6 +98,7 @@ mainCommand = ->
 
 
   initCompileWidgets = (callback) ->
+    return callback?() if !options.build && !options.dev
     configPaths = require "#{ path.join baseDirFull, outputDir, publicDir, pathToCore }configPaths"
 
     baseUrl = path.join outputDir, publicDir
@@ -114,27 +108,10 @@ mainCommand = ->
 
     requirejs.config configPaths
 
-    basePath = path.normalize publicDir
-
     requirejs [
       "cord!config"
     ], (config) ->
       config.PUBLIC_PREFIX = baseUrl
-
-      widgetsWaitComliler = []
-      widgetsPaths = {}
-
-      for source in sources
-        extname = path.extname source
-        if extname is '.coffee' and parseInt(source.indexOf '/widgets/') > 0
-          dirname = getWidgetPath source
-
-          if !widgetsPaths[dirname]
-            widgetsPaths[dirname] = dirname
-
-            if options.clean or isDiffSource path.dirname(source), outputPath(path.dirname(source), basePath)
-              widgetsWaitComliler.push dirname
-
       compileWidget callback
 
 
@@ -172,6 +149,14 @@ getWidgetPath = (source) ->
   pathToWidget.pop()
 
   "#{ pathToWidget.join '/' }/#{ widgetClassName }"
+
+
+addWidgetWaitCompiler = (source) ->
+  return if parseInt( source.indexOf '/widgets/' ) < 0
+  dirname = getWidgetPath source
+  return if widgetsWaitComliler.some (s) -> s.indexOf(dirname) >= 0
+  if isDiffSource path.dirname(source), outputPath(path.dirname(source), basePath)
+    widgetsWaitComliler.push dirname
 
 
 compileWidget = (callback) ->
@@ -289,6 +274,7 @@ syncFile = (source, base, callback, onlyWatch = false, symbolicLink) ->
     widgetsWaitComliler.push getWidgetPath(source)
 
   completeSync = ->
+    return callback?() if !options.started
     compileWidget callback
 
   if extname is ".scss" or extname is ".sass"
@@ -307,6 +293,7 @@ syncFile = (source, base, callback, onlyWatch = false, symbolicLink) ->
 
   else if options.dev or options.build
     copyFile source, base, (err) ->
+      addWidgetWaitCompiler baseSource
       completeSync()
     , symbolicLink
   else
