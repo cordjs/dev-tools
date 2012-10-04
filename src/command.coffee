@@ -299,12 +299,12 @@ syncFile = (source, base, callback, onlyWatch = false, symbolicLink) ->
 #    widgetsWaitComliler.push getWidgetPath(source)
 
   completeSync = ->
-    return callback?() if !commander.watchModeEnable
+    return callback?() if !watchModeEnable
     compileWidget callback
 
   if extname is ".scss" or extname is ".sass"
 
-    if !commander.watchModeEnable
+    if !watchModeEnable
       aFiles.compile.push source
       return completeSync()
 
@@ -338,7 +338,7 @@ copyFile = (source, base, callback, symbolicLink) ->
     fs.stat path.dirname( source ), (err, stat) =>
       fs.utimes fileDir, stat.atime, stat.mtime
 
-    Cordjs.utils.timeLog "Update file '#{ source }'" if commander.watchModeEnable
+    Cordjs.utils.timeLog "Update file '#{ source }'" if watchModeEnable
 
   copyHelper = () ->
     fs.stat source, (err, stat) =>
