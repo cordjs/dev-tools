@@ -228,17 +228,26 @@ create = (type) ->
 
 
 # start server
+iErrServerStart = 0
+timerErrServer = null
+
 startServer = ->
   serverChild = spawn "node", [path.join(outputDir, 'server.js'), path.join(outputDir, publicDir)]
 
   serverChild.stdout.on 'data', (data) ->
+#    iErrServerStart = 0
     util.print data
 
   serverChild.stderr.on 'data', (error) ->
     util.print error
 
   serverChild.on 'exit', (code) ->
-    restartServer() if !isServerRestart and commander.autorestart
+    return if isServerRestart or !commander.autorestart
+    if iErrServerStart > 1
+      Cordjs.utils.timeLogError "Can't restart server. Code error '#{ code }'"
+      return process.exit 1
+    iErrServerStart++
+    restartServer()
 
 
 # stop server
@@ -253,6 +262,11 @@ restartServer = ->
   startServer()
   wait 10, =>
     isServerRestart = false
+
+  clearTimeout timerErrServer
+  timerErrServer = setTimeout =>
+      iErrServerStart = 0
+    , 1000
   Cordjs.utils.timeLog 'Server restarted'
 
 
