@@ -42,12 +42,31 @@ commander
   .option('-w, --watch',        'watch scripts for changes and rerun commands')
   .version(Cordjs.VERSION, '-v, --version')
 
+commander
+  .on '--help', ->
+    printLine "Cordjs current version: #{Cordjs.VERSION.green}"
+    printLine ""
+
+#commander
+#  .command('setup [env]')
+#  .description('run setup commands for all envs')
+#  .option("-s, --setup_mode [mode]", "Which setup mode to use")
+#
+#commander
+#  .command('*')
+#  .action (env) ->
+#    console.log('deploying "%s"', env)
+#
+#  .description('***run setup commands for all envs')
+
 
 # Entry
 exports.run = ->
 
   commander
     .parse(process.argv)
+
+#  return commander.outputHelp() if !commander.args.length
 
   outputDir = commander.output                if commander.output
   commander.server = commander.watch = true   if commander.autorestart
@@ -65,7 +84,7 @@ exports.run = ->
 #    outputDir = options.output  if options.output
 
 
-# main commans - build, clean, compile, watch, startserver, etc.
+# main commands - build, clean, compile, watch, startserver, etc.
 mainCommand = ->
   return false if !testCommandDir()
   removeDirSync outputDir if commander.clean
@@ -275,8 +294,9 @@ syncFile = (source, base, callback, onlyWatch = false, symbolicLink) ->
   watchFile baseSource, base, symbolicLink  if !onlyWatch and commander.watch
   extname = path.extname baseSource
 
-  if onlyWatch and parseInt(source.indexOf '/widgets/') > 0
-    widgetsWaitComliler.push getWidgetPath(source)
+  addWidgetWaitCompiler source
+#  if onlyWatch and parseInt(source.indexOf '/widgets/') > 0
+#    widgetsWaitComliler.push getWidgetPath(source)
 
   completeSync = ->
     return callback?() if !commander.watchModeEnable
