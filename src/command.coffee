@@ -22,6 +22,7 @@ baseDirFull     = null
 serverChild     = null
 timeStart       =
 timeEnd         = null
+isServerRestart = false
 
 pathToCore      = "/bundles/cord/core/"
 pathToNodeInit  = "#{ pathToCore }nodeInit"
@@ -237,7 +238,7 @@ startServer = ->
     util.print error
 
   serverChild.on 'exit', (code) ->
-    restartServer() if commander.autorestart
+    restartServer() if !isServerRestart and commander.autorestart
 
 
 # stop server
@@ -247,8 +248,11 @@ stopServer = ->
 
 # restart server
 restartServer = ->
+  isServerRestart = true
   stopServer()
   startServer()
+  wait 10, =>
+    isServerRestart = false
   Cordjs.utils.timeLog 'Server restarted'
 
 
