@@ -236,6 +236,9 @@ startServer = ->
   serverChild.stderr.on 'data', (error) ->
     util.print error
 
+  serverChild.on 'exit', (code) ->
+    restartServer() if commander.autorestart
+
 
 # stop server
 stopServer = ->
