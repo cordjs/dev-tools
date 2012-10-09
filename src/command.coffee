@@ -177,7 +177,8 @@ getWidgetPath = (source) ->
 
 
 addWidgetWaitCompiler = (source) ->
-  return if parseInt( source.indexOf '/widgets/' ) < 0
+  return if parseInt( source.indexOf '/widgets/' ) < 0 or parseInt( source.indexOf '.html' ) < 0
+
   dirname = getWidgetPath source
   return if widgetsWaitComliler.some (s) -> s.indexOf(dirname) >= 0
   if isDiffSource path.dirname(source), outputPath(path.dirname(source), basePath)
@@ -522,7 +523,8 @@ _endTimer = ->
 # Convenience for cleaner setTimeouts
 wait = (milliseconds, func) -> setTimeout func, milliseconds
 
-exists    = fs.exists or path.exists
+exists      = fs.exists
+existsSync  = fs.existsSync
 hidden = (file) -> /\/\.|~$/.test(file) or /^\.|~$/.test file
 
 printLine = (line) -> process.stdout.write line + '\n'
