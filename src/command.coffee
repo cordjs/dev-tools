@@ -196,7 +196,9 @@ compileWidget = (callback) ->
     "cord!config"
   ], (WidgetClass, widgetCompiler, config) =>
 
-    widget = new WidgetClass true
+    widget = new WidgetClass
+      compileMode: true
+
     widgetCompiler.reset widget
 
     widget.compileTemplate (err, output) =>
