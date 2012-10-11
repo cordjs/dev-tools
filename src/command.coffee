@@ -8,6 +8,8 @@ Cordjs          = require './cordjs'
 CoffeeScript    = require './coffee-script'
 util            = require 'util'
 requirejs       = require 'requirejs'
+Stylus          = require 'stylus'
+nib             = require 'nib'
 
 publicDir = basePath  = 'public'
 outputDir             = 'target'
@@ -91,6 +93,12 @@ mainCommand = ->
   removeDirSync outputDir if commander.clean
 
   _startTimer()
+
+  console.log " "
+  console.log " "
+  console.log "           Cordjs tools version:  #{Cordjs.VERSION.green}"
+  console.log " "
+  console.log " "
 
   createDir (outputDir), (existDir) ->
     Cordjs.utils.timeLog "Output directory created '#{outputDir}'" if !existDir
@@ -327,7 +335,6 @@ syncFile = (source, base, callback, onlyWatch = false, symbolicLink) ->
     compileWidget callback
 
   if extname is ".scss" or extname is ".sass"
-
     if !watchModeEnable
       aFiles.compile.push source
       return completeSync()
@@ -345,6 +352,7 @@ syncFile = (source, base, callback, onlyWatch = false, symbolicLink) ->
       addWidgetWaitCompiler baseSource
       completeSync()
     , symbolicLink
+
   else
     completeSync()
 
@@ -371,13 +379,35 @@ copyFile = (source, base, callback, symbolicLink) ->
 
       return callback?() if !isDiffSource source, filePath
 
-      if path.extname(source) is '.coffee'
+      extname = path.extname source
 
+      # render coffee-script
+      if extname is '.coffee'
         CoffeeScript.compile source, base, commander, (jsCode) ->
           fs.writeFile filePath, jsCode, (err) ->
             if err
               printLine err.message
             copyCallback()
+
+      # render stylus
+      else if extname is '.styl'
+        str = fs.readFileSync source, 'utf8'
+        Stylus(str)
+        .set('filename', source)
+        .define('url', Stylus.url())
+        .use(nib())
+        .render (err, css) ->
+          if err
+            Cordjs.utils.timeLogError "Stylus: #{ source }"
+            printWarn err
+#            process.exit 1
+
+          fs.writeFile filePath, css, (err) ->
+            if err
+              printLine err.message
+            copyCallback()
+
+      # simple copy
       else
         util.pump fs.createReadStream(source), fs.createWriteStream(filePath), (err) ->
           return callback? err if err?
@@ -506,7 +536,8 @@ removeDirSync = (source) ->
 # Get output path
 outputPath = (source, base) ->
   filename  = path.basename source
-  filename = path.basename(source, path.extname(source)) + '.js' if path.extname(source) is '.coffee'
+  filename = path.basename(source, path.extname(source)) + '.js'  if path.extname(source) is '.coffee'
+  filename = path.basename(source, path.extname(source)) + '.css' if path.extname(source) is '.styl'
   srcDir    = path.dirname source
   baseDir   = srcDir
   dir       = path.join outputDir, baseDir
