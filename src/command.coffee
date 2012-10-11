@@ -392,7 +392,7 @@ copyFile = (source, base, callback, symbolicLink) ->
       # render stylus
       else if extname is '.styl'
         str = fs.readFileSync source, 'utf8'
-        Stylus(str)
+        Stylus("@import 'nib' \n\n" + str)
         .set('filename', source)
         .define('url', Stylus.url())
         .use(nib())
