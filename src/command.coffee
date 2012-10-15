@@ -201,8 +201,7 @@ compileWidget = (callback) ->
   requirejs [
     "cord-w!#{ widgetName }"
     "cord!widgetCompiler"
-    "cord!config"
-  ], (WidgetClass, widgetCompiler, config) =>
+  ], (WidgetClass, widgetCompiler) =>
 
     widget = new WidgetClass
       compileMode: true
