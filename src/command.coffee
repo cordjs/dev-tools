@@ -142,9 +142,9 @@ mainCommand = ->
     requirejs.config configPaths
 
     requirejs [
-      "cord!config"
-    ], (config) ->
-      config.PUBLIC_PREFIX = baseUrl
+      "cord!configPaths"
+    ], (configPaths) ->
+      configPaths.PUBLIC_PREFIX = baseUrl
       compileWidget callback
 
 
