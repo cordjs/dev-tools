@@ -6,7 +6,7 @@ sys   = require 'sys'
 colors = require 'colors'
 
 # The current version number
-exports.VERSION = '0.1.14'
+exports.VERSION = '0.1.15'
 
 Generator = {
   collection: {}
@@ -82,6 +82,7 @@ sendCommand = (command, callback) ->
 
     callback?(arguments...)
 
+exports.createDir = createDir
 exports.sendCommand = sendCommand
 
 # Utilites

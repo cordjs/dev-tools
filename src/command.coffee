@@ -52,14 +52,31 @@ commander
 
 commander
   .command('core [env]')
-  .description('     update'.grey + ' - pulling from github')
+  .description(
+    '     create'.grey + ' - create Core\n' +
+    '     update'.grey + ' - pulling from github\n' +
+    '     remove'.grey + ' - remove Core'
+  )
   .action (env) ->
+    return false if !testCommandDir()
+
     switch env
+
       when 'update'
         return Cordjs.utils.timeLogError 'Can\'t find cord/core!' if !fs.existsSync 'public/bundles/cord/core'
         Cordjs.utils.timeLog 'Update core...'
         Cordjs.sendCommand "cd public/bundles/cord; git pull; cd -", ->
           Cordjs.utils.timeLog 'Update core complete!'
+
+      when 'create'
+        return Cordjs.utils.timeLogError 'Can\'t create cord/core, because core is exist!' if fs.existsSync 'public/bundles/cord/core'
+        Cordjs.sendCommand "mkdir -p public/bundles/cord/core", (error) ->
+          Cordjs.utils.timeLog 'Cloning core...'
+          Cordjs.sendCommand "git clone https://github.com/cordjs/core.git public/bundles/cord/core"
+
+      when 'remove'
+        Cordjs.sendCommand "rm -R public/bundles/cord/core", (error) ->
+          Cordjs.utils.timeLog 'Core remove complete!'
       else
         Cordjs.utils.timeLog 'Nothing todo'
 
