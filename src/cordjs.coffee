@@ -6,7 +6,7 @@ sys   = require 'sys'
 colors = require 'colors'
 
 # The current version number
-exports.VERSION = '0.1.13'
+exports.VERSION = '0.1.14'
 
 Generator = {
   collection: {}
@@ -77,10 +77,8 @@ createDir = (dir) ->
 # exec command-line
 sendCommand = (command, callback) ->
   exec command, (error, stdout, stderr) ->
-    if error
-      utils.timeLogError "#{ error }"
-    else
-      utils.timeLog stdout if stdout
+    utils.printWarn stderr if stderr
+    utils.printLine stdout if stdout
 
     callback?(arguments...)
 
@@ -93,5 +91,7 @@ utils = {
   timeLogError: (message, text = '') -> console.log "#{ utils.time } - ".red + "#{ utils.textError message } #{ text }"
   logError:     (message) -> console.log utils.textError( message )
   textError:    (message) -> "#{ 'ERROR:'.bold } #{ message }".red
+  printLine:    (line) -> process.stdout.write line + '\n'
+  printWarn:    (line) -> process.stderr.write line + '\n'
 }
 exports.utils = utils
