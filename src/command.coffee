@@ -65,7 +65,7 @@ commander
       when 'update'
         return Cordjs.utils.timeLogError 'Can\'t find cord/core!' if !fs.existsSync 'public/bundles/cord/core'
         Cordjs.utils.timeLog 'Update core...'
-        Cordjs.sendCommand "cd public/bundles/cord; git pull; cd -", ->
+        Cordjs.sendCommand "git --git-dir=public/bundles/cord/core/.git pull", ->
           Cordjs.utils.timeLog 'Update core complete!'
 
       when 'create'
