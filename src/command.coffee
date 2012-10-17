@@ -50,31 +50,31 @@ commander
     printLine "Cordjs current version: #{Cordjs.VERSION.green}"
     printLine ""
 
-#commander
-#  .command('setup [env]')
-#  .description('run setup commands for all envs')
-#  .option("-s, --setup_mode [mode]", "Which setup mode to use")
-#
-#commander
-#  .command('*')
-#  .action (env) ->
-#    console.log('deploying "%s"', env)
-#
-#  .description('***run setup commands for all envs')
+commander
+  .command('core [env]')
+  .description('     update'.grey + ' - pulling from github')
+  .action (env) ->
+    switch env
+      when 'update'
+        return Cordjs.utils.timeLogError 'Can\'t find cord/core!' if !fs.existsSync 'public/bundles/cord/core'
+        Cordjs.utils.timeLog 'Update core...'
+        Cordjs.sendCommand "cd public/bundles/cord; git pull; cd -", ->
+          Cordjs.utils.timeLog 'Update core complete!'
+      else
+        Cordjs.utils.timeLog 'Nothing todo'
 
 
 # Entry
 exports.run = ->
-
   commander
     .parse(process.argv)
-
-#  return commander.outputHelp() if !commander.args.length
 
   outputDir = commander.output                if commander.output
   commander.server = commander.watch = true   if commander.autorestart
 
-  mainCommand()
+  if !commander.args.length
+    mainCommand()
+
 #  args = process.argv[2..]
 #  type = args.shift().split ':'
 #  command = type[1]
@@ -186,6 +186,8 @@ getWidgetPath = (source) ->
 
 addWidgetWaitCompiler = (source) ->
   return if parseInt( source.indexOf '/widgets/' ) < 0 or parseInt( source.indexOf '.html' ) < 0
+
+  return if path.basename(path.dirname(source)) != path.basename(source, path.extname(source))
 
   dirname = getWidgetPath source
   return if widgetsWaitComliler.some (s) -> s.indexOf(dirname) >= 0
@@ -391,10 +393,23 @@ copyFile = (source, base, callback, symbolicLink) ->
       # render stylus
       else if extname is '.styl'
         str = fs.readFileSync source, 'utf8'
+
+        regexCord = /(["'])cord-s!([\w/]+)/gi
+        search = str.search regexCord
+        str = str.replace regexCord, (text, p1, p2) ->
+          return p1 + "."
+
+        if ~search
+          console.log source
+          throw "Waiting to Davojan's convert-method..."
+          process.exit 1
+
         Stylus("@import 'nib' \n\n" + str)
         .set('filename', source)
         .define('url', Stylus.url())
         .use(nib())
+#        .include('public')
+#        .include(source.slice( 0, source.indexOf( '/widgets/' ) + '/widgets/'.length ))
         .render (err, css) ->
           if err
             Cordjs.utils.timeLogError "Stylus: #{ source }"
