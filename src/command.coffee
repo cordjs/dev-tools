@@ -391,7 +391,7 @@ copyFile = (source, base, callback, symbolicLink) ->
     Cordjs.utils.timeLog "Update file '#{ source }'" if watchModeEnable
 
   copyHelper = () ->
-    fs.stat source, (err, stat) =>
+    fs.stat source, (err, stat) ->
       sourceStat = stat
       callback? err if err
 
@@ -409,34 +409,28 @@ copyFile = (source, base, callback, symbolicLink) ->
 
       # render stylus
       else if extname is '.styl'
-        str = fs.readFileSync source, 'utf8'
+        re = /^@import ['"](.+)['"]$/gm
+        fs.readFile source, 'utf8', (err, str) ->
+          throw err if err
+          configPaths = require "#{ path.join baseDirFull, outputDir, publicDir, pathToCore }configPaths"
+          replaced = str.replace re, (match, p1) ->
+            "@import \"#{ configPaths.convertCssPath(p1, source) }\""
 
-        regexCord = /(["'])cord-s!([\w/]+)/gi
-        search = str.search regexCord
-        str = str.replace regexCord, (text, p1, p2) ->
-          return p1 + "."
+          Stylus("@import 'nib' \n\n" + replaced)
+            .set('filename', source)
+            .define('url', Stylus.url())
+            .use(nib())
+#            .include('public')
+#            .include(source.slice( 0, source.indexOf( '/widgets/' ) + '/widgets/'.length ))
+            .render (err, css) ->
+              if err
+                Cordjs.utils.timeLogError "Stylus: #{ source }"
+                printWarn err
 
-        if ~search
-          console.log source
-          throw "Waiting to Davojan's convert-method..."
-          process.exit 1
-
-        Stylus("@import 'nib' \n\n" + str)
-        .set('filename', source)
-        .define('url', Stylus.url())
-        .use(nib())
-#        .include('public')
-#        .include(source.slice( 0, source.indexOf( '/widgets/' ) + '/widgets/'.length ))
-        .render (err, css) ->
-          if err
-            Cordjs.utils.timeLogError "Stylus: #{ source }"
-            printWarn err
-#            process.exit 1
-
-          fs.writeFile filePath, css, (err) ->
-            if err
-              printLine err.message
-            copyCallback()
+              fs.writeFile filePath, css, (err) ->
+                if err
+                  printLine err.message
+                copyCallback()
 
       # simple copy
       else
