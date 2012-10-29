@@ -412,7 +412,7 @@ copyFile = (source, base, callback, symbolicLink) ->
         re = /^@import ['"](.+)['"]$/gm
         fs.readFile source, 'utf8', (err, str) ->
           throw err if err
-          configPaths = requirejs "#{ path.join baseDirFull, outputDir, publicDir, pathToCore }configPaths"
+          configPaths = require "#{ path.join baseDirFull, publicDir, pathToCore }configPaths"
           replaced = str.replace re, (match, p1) ->
             "@import \"#{ configPaths.convertCssPath(p1, source) }\""
 

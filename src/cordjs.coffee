@@ -6,7 +6,7 @@ sys   = require 'sys'
 colors = require 'colors'
 
 # The current version number
-exports.VERSION = '0.1.19'
+exports.VERSION = '0.1.20'
 
 Generator = {
   collection: {}
