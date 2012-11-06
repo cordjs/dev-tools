@@ -5,9 +5,6 @@ sys   = require 'sys'
 {spawn, exec}   = require 'child_process'
 colors = require 'colors'
 
-# The current version number
-exports.VERSION = '0.1.21'
-
 Generator = {
   collection: {}
 

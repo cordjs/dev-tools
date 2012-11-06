@@ -5,6 +5,7 @@ walk            = require 'walk'
 commander       = require 'commander'
 {spawn, exec}   = require 'child_process'
 Cordjs          = require './cordjs'
+packageInfo     = require '../../package.json'
 CoffeeScript    = require './coffee-script'
 util            = require 'util'
 requirejs       = require 'requirejs'
@@ -43,11 +44,11 @@ commander
   .option('-o, --output [dir]', 'output directory [' + outputDir + ']', outputDir)
   .option('-s, --server',       'start server')
   .option('-w, --watch',        'watch scripts for changes and rerun commands')
-  .version(Cordjs.VERSION, '-v, --version')
+  .version(packageInfo.version, '-v, --version')
 
 commander
   .on '--help', ->
-    printLine "Cordjs current version: #{Cordjs.VERSION.green}"
+    printLine "Cordjs current version: #{packageInfo.version.green}"
     printLine ""
 
 commander
@@ -113,7 +114,7 @@ mainCommand = ->
 
   console.log " "
   console.log " "
-  console.log "           Cordjs tools version:  #{Cordjs.VERSION.green}"
+  console.log "           Cordjs tools version:  #{packageInfo.version.green}"
   console.log " "
   console.log " "
 
@@ -409,7 +410,7 @@ copyFile = (source, base, callback, symbolicLink) ->
 
       # render stylus
       else if extname is '.styl'
-        re = /^@import ['"](.+)['"]$/gm
+        re = /^@import ['"](.*\/\/.+)['"]$/gm
         fs.readFile source, 'utf8', (err, str) ->
           throw err if err
           configPaths = require "#{ path.join baseDirFull, publicDir, pathToCore }configPaths"
