@@ -16,7 +16,7 @@ publicDir = basePath  = 'public'
 outputDir             = 'target'
 watchModeEnable       = false
 sources               = []
-widgetsWaitComliler   = []
+widgetsWaitCompiler   = []
 aFiles =
   sync: []
   copy: []
@@ -203,18 +203,16 @@ getWidgetPath = (source) ->
 
 
 addWidgetWaitCompiler = (source) ->
-  return if parseInt( source.indexOf '/widgets/' ) < 0 or parseInt( source.indexOf '.html' ) < 0
+  if source.indexOf('/widgets/') != -1 and source.substr(-5) == '.html'
+    canonicalPath = getWidgetPath source
+    if widgetsWaitCompiler.indexOf(canonicalPath) == -1 and # not already added
+        isDiffSource path.dirname(source), outputPath(path.dirname(source), basePath)
+      widgetsWaitCompiler.push canonicalPath
 
-  return if path.basename(path.dirname(source)) != path.basename(source, path.extname(source))
-
-  dirname = getWidgetPath source
-  return if widgetsWaitComliler.some (s) -> s.indexOf(dirname) >= 0
-  if isDiffSource path.dirname(source), outputPath(path.dirname(source), basePath)
-    widgetsWaitComliler.push dirname
 
 
 compileWidget = (callback) ->
-  widgetName = widgetsWaitComliler.pop()
+  widgetName = widgetsWaitCompiler.pop()
   if !widgetName?
     return callback?()
 
@@ -347,7 +345,7 @@ syncFile = (source, base, callback, onlyWatch = false, symbolicLink) ->
 
   addWidgetWaitCompiler source
 #  if onlyWatch and parseInt(source.indexOf '/widgets/') > 0
-#    widgetsWaitComliler.push getWidgetPath(source)
+#    widgetsWaitCompiler.push getWidgetPath(source)
 
   completeSync = ->
     return callback?() if !watchModeEnable
