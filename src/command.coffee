@@ -98,17 +98,6 @@ exports.run = ->
   if !commander.args.length
     mainCommand()
 
-#  args = process.argv[2..]
-#  type = args.shift().split ':'
-#  command = type[1]
-#  if command?
-#    otherCommand type[0], command, args
-#  else
-#    parseOptions process.argv[2..]
-#    return usage()              if options.help
-#    return version()            if options.version
-#    outputDir = options.output  if options.output
-
 
 # main commands - build, clean, compile, watch, startserver, etc.
 mainCommand = ->
@@ -132,11 +121,11 @@ mainCommand = ->
     basePath = path.normalize publicDir
 
     syncFiles publicDir, basePath, ->
-      exec "sass --update #{publicDir}:#{path.join outputDir, publicDir}", (error) ->
-        Cordjs.utils.timeLogError 'Sass compiler' if error?
+#      exec "sass --update #{publicDir}:#{path.join outputDir, publicDir}", (error) ->
+#        Cordjs.utils.timeLogError 'Sass compiler' if error?
 
-        return syncFiles 'node_modules', path.normalize('node_modules'), completeSync if commander.build
-        completeSync()
+      return syncFiles 'node_modules', path.normalize('node_modules'), completeSync if commander.build
+      completeSync()
 
 
   completeSync = ->
@@ -151,6 +140,8 @@ mainCommand = ->
         if commander.server
           pathToNodeInit = "#{ path.join baseDirFull, outputDir, publicDir, pathToNodeInit }"
           startServer()
+
+        removeUnusedFiles() if !commander.clean
 
 
   initCompileWidgets = (callback) ->
@@ -264,6 +255,7 @@ create = (type) ->
 iErrServerStart = 0
 timerErrServer = null
 
+
 startServer = ->
   serverChild = spawn "node", [path.join(outputDir, 'server.js'), path.join(outputDir, publicDir)]
 
@@ -335,6 +327,46 @@ syncFiles = (source, base, callback) ->
         aFiles.sync.push source
         next()
       , false, symbolicLink
+      next()
+
+    walker.on 'end', ->
+      callback?()
+
+
+removeUnusedFiles = (callback) ->
+    targetPublicPath = path.join outputDir, publicDir
+    walker = walk.walk targetPublicPath, { followLinks: false }
+
+    sourcePath = (root, name) ->
+      source = path.join root, name
+      source = source.replace targetPublicPath, publicDir
+
+    walker.on 'directory', (root, stat, next) ->
+
+      source = sourcePath(root, stat.name)
+      exists source, (itExists) ->
+#        if !itExists
+#          console.log '_dir:', source
+      next()
+
+    walker.on 'file', (root, stat, next) ->
+
+      currentSource = path.join root, stat.name
+      source = sourcePath(root, stat.name)
+      filename = path.basename(stat.name, path.extname(stat.name))
+      filename = sourcePath(root, filename)
+      extname = path.extname source
+
+      if extname is '.js' and !~source.indexOf('html.js')
+        do (filename, source, currentSource) ->
+          exists "#{filename}.coffee", (itExists) ->
+            if !itExists
+              exists source, (itExists) ->
+                if !itExists
+#                  console.log '_fileJs:', source, !~source.indexOf('html.js')
+                  fs.unlink currentSource, (err) ->
+                    throw err if err and err.code isnt 'ENOENT'
+                    Cordjs.utils.timeLog "removed unused file #{ currentSource }"
       next()
 
     walker.on 'end', ->
