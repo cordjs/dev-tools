@@ -15,6 +15,7 @@ compile = (source, base, options, callback) ->
     return callback?() if err?.code is 'ENOENT'
     string = code.toString()
 
+    output = ''
     try
       t = task = {source, string, options}
       CoffeeScript.emit 'compile', task
@@ -23,10 +24,9 @@ compile = (source, base, options, callback) ->
     catch err
       Cordjs.utils.timeLogError "CoffeScript: #{ source }"
       CoffeeScript.emit 'failure', err, task
-      return if CoffeeScript.listeners('failure').length
-      return printLine err.message + '\x07' if options.watch
-      printWarn err instanceof Error and err.stack or "ERROR: #{err}"
-      process.exit 1
+#      return if CoffeeScript.listeners('failure').length
+      printLine err.message + '\x07' if options.watch
+      printLine err instanceof Error and err.stack or "ERROR: #{err}"
     output = if output.length <= 0 then ' ' else output
     callback? output
 

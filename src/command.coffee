@@ -33,6 +33,7 @@ pathToNodeInit  = "#{ pathToCore }nodeInit"
 StylusLib = (style) ->
   style.define('url', Stylus.url())
   style.use(nib())
+  style.import('nib')
 
 
 # Print if call without arguments
@@ -419,9 +420,10 @@ copyFile = (source, base, callback, symbolicLink) ->
           replaced = str.replace re, (match, p1) ->
             "@import \"#{ configPaths.convertCssPath(p1, source) }\""
 
-          Stylus("@import 'nib' \n\n" + replaced)
+          Stylus(replaced)
             .set('filename', source)
             .use(StylusLib)
+            .set('compress', true)
             .render (err, css) ->
               if err
                 Cordjs.utils.timeLogError "Stylus: #{ source }"
