@@ -30,6 +30,10 @@ isServerRestart = false
 pathToCore      = "/bundles/cord/core/"
 pathToNodeInit  = "#{ pathToCore }nodeInit"
 
+StylusLib = (style) ->
+  style.define('url', Stylus.url())
+  style.use(nib())
+
 
 # Print if call without arguments
 EmptyArguments = " #{ 'Usage:'.bold } cordjs [options] path/to/project -- [args] ".inverse
@@ -417,10 +421,7 @@ copyFile = (source, base, callback, symbolicLink) ->
 
           Stylus("@import 'nib' \n\n" + replaced)
             .set('filename', source)
-            .define('url', Stylus.url())
-            .use(nib())
-#            .include('public')
-#            .include(source.slice( 0, source.indexOf( '/widgets/' ) + '/widgets/'.length ))
+            .use(StylusLib)
             .render (err, css) ->
               if err
                 Cordjs.utils.timeLogError "Stylus: #{ source }"
