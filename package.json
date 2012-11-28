@@ -1,7 +1,7 @@
 {
   "name":       "cordjs",
   "keywords":   ["cordjs", "framework"],
-  "version":    "0.1.26",
+  "version":    "0.1.27",
   "directories": {
     "lib":    "./lib/cordjs"
   },

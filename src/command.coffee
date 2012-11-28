@@ -144,7 +144,7 @@ mainCommand = ->
       initCompileWidgets ->
         countCompiled = (if aFiles.compile.length then "#{ aFiles.compile.length  }".green else "#{ aFiles.compile.length  }".grey)
         Cordjs.utils.timeLog "Sync files is complete! Total " + "#{ aFiles.sync.length }".yellow + " files, #{ countCompiled } files compiled"
-        Cordjs.utils.timeLog "Compiled files: " + "#{ aFiles.compile.join ', ' }".yellow  if !commander.clean and aFiles.compile.length
+#        Cordjs.utils.timeLog "Compiled files: " + "#{ aFiles.compile.join ', ' }".yellow  if !commander.clean and aFiles.compile.length
         watchModeEnable = true if commander.watch
         _endTimer()
 
@@ -449,7 +449,7 @@ isDiffSource = ( baseSource, outputSource, baseStat, outputStat ) ->
   baseStat = fs.statSync baseSource if !baseStat?
   try
     outputStat = fs.statSync outputSource if !outputStat?
-    if outputStat.isDirectory() or path.extname(baseSource) is '.coffee'
+    if outputStat.isDirectory() or path.extname(baseSource) is '.coffee' or path.extname(baseSource) is '.styl'
       return false if baseStat.mtime.getTime() is outputStat.mtime.getTime()
     else
       return false if outputStat.size is baseStat.size and baseStat.mtime.getTime() is outputStat.mtime.getTime()
