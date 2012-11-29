@@ -5,7 +5,84 @@ sys   = require 'sys'
 {spawn, exec}   = require 'child_process'
 colors = require 'colors'
 
-Generator = {
+CommandGenerator = {
+  widget: (commander) ->
+    commander
+#      .command('widget')
+      .command('widgetCreate [widgetName]')
+      .description('create widget in current directory')
+      .option("-B, --behaviour", "create widget with BehaviourClass")
+      .option("-C, --css", "create with css")
+#      .on '--help', ->
+#        console.log('  Examples:');
+#        console.log();
+#        console.log('    $ cordjs widgetCreate -bc dropdownWidget');
+#        console.log('    ');
+#        console.log('    $ deploy exec async');
+#        console.log()
+      .action (widgetName, options) ->
+
+        if options.behaviour
+          console.log 'behaviour'
+        console.log options
+        console.log 'widgetName: ', widgetName #, arguments[1].options
+        ''
+#      .on '--help', ->
+#        console.log('  Examples:');
+#        console.log();
+#        console.log('    $ deploy exec sequential');
+#        console.log('    $ deploy exec async');
+#        console.log()
+
+#    widget = commander
+#      .command('widget')
+##      .description(
+##        '     create'.grey + '\n' +
+##        '     remove'.grey + ''
+##      )
+##      .option('-b, --behaviour',  'with behaviourClass')
+##      .option('-c, --css',        'with css')
+#      .on '--help', ->
+#        console.log('  Examples:');
+#        console.log();
+#        console.log('    $ deploy exec sequential');
+#        console.log('    $ deploy exec async');
+#        console.log()
+#
+#    widget
+#      .command('create')
+#      .on '--help', ->
+#        console.log('  Examples:');
+#        console.log();
+#        console.log('    $ deploy exec sequential');
+#        console.log('    $ deploy exec async');
+#        console.log()
+#      .option('-b, --behaviour',  'with behaviourClass')
+#      .option('-c, --css',        'with css')
+#      .action (env) ->
+#        console.log 'create'
+#        process.exit 1
+#          return false if !testCommandDir()
+#
+#          switch env
+#            when 'widget'
+#              commander.prompt 'Bundle path: ', (bundlePath) ->
+#                console.log 'path: %s', bundlePath
+#                commander.prompt 'bundle name: ', (bundleName) ->
+#                  console.log 'bundleName: %s', bundleName
+#                  commander.prompt 'widget name: ', (widgetName) ->
+#                    console.log 'widgetName: %s', widgetName
+#                    console.log "path to widget: ", path.join( bundlePath, 'widgets', bundleName, widgetName )
+#                    process.exit 1
+
+#    widget
+#      .command('delete')
+#      .action (env) ->
+#        console.log 'delete'
+#        process.exit 1
+}
+
+Generator2 = {
   collection: {}
 
   addGenerator: (name, callback) ->
@@ -59,10 +136,10 @@ bundleGenerator = (command, args) ->
       utils.timeLog "Bundle #{ bundleName } create!"
 
 # Init def-generators
-Generator.init()
+#Generator.init()
 
 # Export
-exports.Generator = Generator
+exports.CommandGenerator = CommandGenerator
 
 # Create directory
 createDir = (dir) ->

@@ -86,6 +86,7 @@ commander
       else
         Cordjs.utils.timeLog 'Nothing todo'
 
+#Cordjs.CommandGenerator.widget commander
 
 # Entry
 exports.run = ->
@@ -233,24 +234,6 @@ compileWidget = (callback) ->
         compileWidget callback
 
 
-# other commands - create project, bundle, etc
-otherCommand = (type, command, args) ->
-  if Cordjs.Generator.exists type
-    Cordjs.Generator.do type, command, args
-  else
-    console.log "Generator #{ type } not found. Available generators: #{ Cordjs.Generator.list() }"
-
-
-create = (type) ->
-  type = type.shift()
-
-  if !type?
-    console.log 'What create: app or bundle?'
-
-  else if !Cordjs.creator.exist type
-    console.log "Generator #{ type } not found"
-
-
 # start server
 iErrServerStart = 0
 timerErrServer = null
@@ -298,10 +281,15 @@ restartServer = ->
 # Synchronize files
 syncFiles = (source, base, callback) ->
   fs.stat source, (err, stats) ->
-    if stats.isFile()
-      return syncFile source, base, ->
-        aFiles.sync.push source
-        callback?()
+
+    try
+      if stats.isFile()
+        return syncFile source, base, ->
+          aFiles.sync.push source
+          callback?()
+    catch e
+      Cordjs.utils.timeLogError "Broken file '#{ source }'"
+      callback?()
 
     walker = walk.walk source, { followLinks: false }
     walker.on 'directory', (root, stat, next) ->
