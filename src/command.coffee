@@ -200,10 +200,14 @@ getWidgetPath = (source) ->
 
 
 addWidgetWaitCompiler = (source) ->
-  if source.indexOf('/widgets/') != -1 and source.substr(-5) == '.html'
+  if ~source.indexOf('/widgets/') and source.substr(-5) == '.html'
     canonicalPath = getWidgetPath source
+    structure = "#{ source }.structure.json"
+    structureStat = _getStat structure # try if exist file-structure
+
     if widgetsWaitCompiler.indexOf(canonicalPath) == -1 and # not already added
-        isDiffSource path.dirname(source), outputPath(path.dirname(source), basePath)
+        !structureStat? and  # fix when exist original file-structure
+        isDiffSource source, outputPath(structure, basePath)
       widgetsWaitCompiler.push canonicalPath
 
 
@@ -225,12 +229,15 @@ compileWidget = (callback) ->
 
     widget.compileTemplate (err, output) =>
       if err then throw err
-      source = "#{ publicDir }/bundles/#{ widget.getTemplatePath() }.structure.json"
-      outputSource = outputPath source, path.normalize( publicDir )
+      source = "#{ publicDir }/bundles/#{ widget.getTemplatePath() }"
+      structure = "#{ source }.structure.json"
+      sourceOutput = outputPath source, path.normalize( publicDir )
+      structureOutput = outputPath structure, path.normalize( publicDir )
 
-      fs.writeFile outputSource, widgetCompiler.getStructureCode(false), (err)->
-        fs.stat path.dirname( source ), (err, stat) =>
-          fs.utimes path.dirname( outputSource ), stat.atime, stat.mtime
+      fs.writeFile structureOutput, widgetCompiler.getStructureCode(false), (err)->
+        fs.stat source, (err, stat) =>
+          fs.utimes sourceOutput, stat.atime, stat.mtime
+          fs.utimes structureOutput, stat.atime, stat.mtime
         compileWidget callback
 
 
@@ -466,14 +473,25 @@ copyFile = (source, base, callback, symbolicLink) ->
 
 # Check diffents source
 isDiffSource = ( baseSource, outputSource, baseStat, outputStat ) ->
-  baseStat = fs.statSync baseSource if !baseStat?
-  try
-    outputStat = fs.statSync outputSource if !outputStat?
-    if outputStat.isDirectory() or path.extname(baseSource) is '.coffee' or path.extname(baseSource) is '.styl'
-      return false if baseStat.mtime.getTime() is outputStat.mtime.getTime()
-    else
-      return false if outputStat.size is baseStat.size and baseStat.mtime.getTime() is outputStat.mtime.getTime()
-  return true
+  baseStat = _getStat baseSource if !baseStat?
+  outputStat = _getStat outputSource if !outputStat?
+  if outputStat?
+    if !outputStat.isDirectory() and
+        !path.extname(baseSource) is '.coffee' and
+        !path.extname(baseSource) is '.styl' and
+        outputStat.size != baseStat.size
+      return true
+
+    return isDiffByTimeSource baseSource, outputSource, baseStat, outputStat
+  true
+
+
+isDiffByTimeSource = ( baseSource, outputSource, baseStat, outputStat ) ->
+  baseStat = _getStat baseSource if !baseStat?
+  outputStat = _getStat outputSource if !outputStat?
+  if outputStat?
+    return false if baseStat.mtime.getTime() is outputStat.mtime.getTime()
+  true
 
 
 # Watch a source file using `fs.watch`, recompiling it every
@@ -589,6 +607,11 @@ outputPath = (source, base) ->
   baseDir   = srcDir
   dir       = path.join outputDir, baseDir
   path.join dir, filename
+
+
+_getStat = (source) ->
+  try
+    fs.statSync source
 
 
 _startTimer = ->
