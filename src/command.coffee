@@ -468,7 +468,10 @@ copyFile = (source, base, callback, symbolicLink) ->
           copyCallback()
 
   exists fileDir, (itExists) ->
-    if itExists then copyHelper() else exec "mkdir -p #{fileDir}", copyHelper
+    if !itExists
+      exec "mkdir -p #{fileDir}"
+
+    copyHelper()
 
 
 # Check diffents source
