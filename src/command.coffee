@@ -298,7 +298,7 @@ syncFiles = (source, base, callback) ->
       Cordjs.utils.timeLogError "Broken file '#{ source }'"
       callback?()
 
-    walker = walk.walk source, { followLinks: false }
+    walker = walk.walkSync source, { followLinks: false }
     walker.on 'directory', (root, stat, next) ->
       source = path.join root, stat.name
       return next()           if hidden source
@@ -330,7 +330,7 @@ syncFiles = (source, base, callback) ->
 
 removeUnusedFiles = (callback) ->
     targetPublicPath = path.join outputDir, publicDir
-    walker = walk.walk targetPublicPath, { followLinks: false }
+    walker = walk.walkSync targetPublicPath, { followLinks: false }
 
     sourcePath = (root, name) ->
       source = path.join root, name
@@ -469,7 +469,7 @@ copyFile = (source, base, callback, symbolicLink) ->
 
   exists fileDir, (itExists) ->
     if !itExists
-      exec "mkdir -p #{fileDir}"
+      createDir fileDir
 
     copyHelper()
 
