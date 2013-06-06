@@ -14,6 +14,7 @@ nib             = require 'nib'
 
 publicDir = basePath  = 'public'
 outputDir             = 'target'
+config                = 'default'
 watchModeEnable       = false
 sources               = []
 widgetsWaitCompiler   = []
@@ -42,14 +43,15 @@ EmptyArguments = " #{ 'Usage:'.bold } cordjs [options] path/to/project -- [args]
 
 # List of options flags
 commander
-  .option('-a, --autorestart',  'autorestart server')
-  .option('-b, --build',        'build project')
-  .option('-c, --clean',        'clean target')
-  .option('-d, --dev',          'development mode - copy all files to the outputDir')
-  .option('-o, --output [dir]', 'output directory [' + outputDir + ']', outputDir)
-  .option('-s, --server',       'start server')
-  .option('-w, --watch',        'watch scripts for changes and rerun commands')
-  .version(packageInfo.version, '-v, --version')
+  .option('-a, --autorestart',   'autorestart server')
+  .option('-b, --build',         'build project')
+  .option('-c, --clean',         'clean target')
+  .option('-d, --dev',           'development mode - copy all files to the outputDir')
+  .option('-o, --output [dir]',  'output directory [' + outputDir + ']', outputDir)
+  .option('-f, --config [name]', 'configuration file name [' + config + ']', config)
+  .option('-s, --server',        'start server')
+  .option('-w, --watch',         'watch scripts for changes and rerun commands')
+  .version(packageInfo.version,  '-v, --version')
 
 commander
   .on '--help', ->
@@ -94,6 +96,7 @@ exports.run = ->
     .parse(process.argv)
 
   outputDir = commander.output                if commander.output
+  config = commander.config                   if commander.config
   commander.server = commander.watch = true   if commander.autorestart
 
   if !commander.args.length
@@ -247,7 +250,7 @@ timerErrServer = null
 
 
 startServer = ->
-  serverChild = spawn "node", [path.join(outputDir, 'server.js'), path.join(outputDir, publicDir)]
+  serverChild = spawn "node", [path.join(outputDir, 'server.js'), path.join(outputDir, publicDir), config]
 
   serverChild.stdout.on 'data', (data) ->
 #    iErrServerStart = 0
