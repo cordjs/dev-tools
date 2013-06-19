@@ -15,6 +15,7 @@ nib             = require 'nib'
 publicDir = basePath  = 'public'
 outputDir             = 'target'
 config                = 'default'
+port                  = 1337
 watchModeEnable       = false
 sources               = []
 widgetsWaitCompiler   = []
@@ -49,6 +50,7 @@ commander
   .option('-d, --dev',           'development mode - copy all files to the outputDir')
   .option('-o, --output [dir]',  'output directory [' + outputDir + ']', outputDir)
   .option('-f, --config [name]', 'configuration file name [' + config + ']', config)
+  .option('-p, --port [port]',   'server listening port [' + port + ']', port)
   .option('-s, --server',        'start server')
   .option('-w, --watch',         'watch scripts for changes and rerun commands')
   .version(packageInfo.version,  '-v, --version')
@@ -97,6 +99,7 @@ exports.run = ->
 
   outputDir = commander.output                if commander.output
   config = commander.config                   if commander.config
+  port = commander.port                       if commander.port
   commander.server = commander.watch = true   if commander.autorestart
 
   if !commander.args.length
@@ -250,7 +253,7 @@ timerErrServer = null
 
 
 startServer = ->
-  serverChild = spawn "node", [path.join(outputDir, 'server.js'), path.join(outputDir, publicDir), config]
+  serverChild = spawn "node", [path.join(outputDir, 'server.js'), path.join(outputDir, publicDir), config, port]
 
   serverChild.stdout.on 'data', (data) ->
 #    iErrServerStart = 0
