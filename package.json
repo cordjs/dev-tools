@@ -1,7 +1,7 @@
 {
   "name":       "cordjs",
   "keywords":   ["cordjs", "framework"],
-  "version":    "0.1.39",
+  "version":    "0.1.40",
   "directories": {
     "lib":    "./lib/cordjs"
   },
@@ -17,7 +17,7 @@
     "dustjs-helpers":   "=1.1.0",
     "postal":           "=0.7.3",
     "monologue.js":     "=0.1.1",
-    "requirejs":        "=2.0.6",
+    "requirejs":        "=2.1.8",
     "underscore":       "=1.4.3",
     "walk":             "2.x",
     "stylus":           "=0.31.0",

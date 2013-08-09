@@ -153,20 +153,17 @@ mainCommand = ->
 
   initCompileWidgets = (callback) ->
     return callback?() if !commander.build && !commander.dev
-    configPaths = require "#{ path.join baseDirFull, outputDir, publicDir, pathToCore }configPaths"
+    pathConfig = require "#{ path.join baseDirFull, outputDir, publicDir, pathToCore }requirejs/pathConfig"
 
     baseUrl = path.join outputDir, publicDir
     requirejs.config
       baseUrl: baseUrl
       nodeRequire: require
+      paths: pathConfig
 
-    requirejs.config configPaths
-
-    requirejs [
-      "cord!configPaths"
-    ], (configPaths) ->
-      configPaths.PUBLIC_PREFIX = baseUrl
-      compileWidget callback
+    requirejs ["pathUtils"], (pathUtils) ->
+      pathUtils.setPublicPrefix(baseUrl)
+      compileWidget(callback)
 
 
 testCommandDir = ->
@@ -449,9 +446,9 @@ copyFile = (source, base, callback, symbolicLink) ->
         re = /^@import ['"](.*\/\/.+)['"]$/gm
         fs.readFile source, 'utf8', (err, str) ->
           throw err if err
-          configPaths = require "#{ path.join baseDirFull, publicDir, pathToCore }configPaths"
+          pathUtils = require "#{ path.join baseDirFull, publicDir, pathToCore }requirejs/pathUtils"
           replaced = str.replace re, (match, p1) ->
-            "@import \"#{ configPaths.convertCssPath(p1, source) }\""
+            "@import \"#{ pathUtils.convertCssPath(p1, source) }\""
 
           Stylus(replaced)
             .set('filename', source)
