@@ -470,11 +470,7 @@ copyFile = (source, base, callback, symbolicLink) ->
           return callback? err if err?
           copyCallback()
 
-  exists fileDir, (itExists) ->
-    if !itExists
-      createDir fileDir
-
-    copyHelper()
+  createDir fileDir, -> copyHelper()
 
 
 # Check diffents source
