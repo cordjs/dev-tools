@@ -7,7 +7,11 @@ DEFAULT_CONFIG_NAME = 'default'
 DEFAULT_SERVER_PORT = 1337
 
 # getting version from the npm package definition
-program.version(packageInfo.version,  '-V, --version')
+program
+  .version(packageInfo.version,  '-V, --version')
+  .on '--help', ->
+    console.log "  CordJS version: #{packageInfo.version}"
+    console.log ""
 
 # common options
 program
