@@ -1,7 +1,7 @@
 {
   "name":       "cordjs",
   "keywords":   ["cordjs", "framework"],
-  "version":    "0.1.41",
+  "version":    "0.1.42",
   "directories": {
     "lib":    "./lib/cordjs"
   },
@@ -22,7 +22,7 @@
     "walk":             "2.x",
     "stylus":           "=0.31.0",
     "moment":           ">=1.7.2",
-    "nib":              ">=0.8.2"
+    "nib":              "=0.9.2"
   },
   "engines": {
     "node":   ">=0.8.0"
