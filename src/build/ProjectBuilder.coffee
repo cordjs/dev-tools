@@ -38,7 +38,7 @@ class ProjectBuilder extends EventEmitter
             completePromise.when(
               buildManager.createTask("#{relativeDir}/#{stat.name}", @params.baseDir, @params.targetDir)
             )
-          next()
+          setTimeout next, 0
 
         walker.on 'end', ->
           console.log "walker for dir #{ dir } completed!"

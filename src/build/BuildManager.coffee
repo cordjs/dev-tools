@@ -11,7 +11,7 @@ class BuildManager
   ###
 
   @workers = []
-  @MAX_WORKERS = Math.max(os.cpus().length - 1, 2)
+  @MAX_WORKERS = Math.max(os.cpus().length, 2)
 
   @_taskIdCounter: 0
 

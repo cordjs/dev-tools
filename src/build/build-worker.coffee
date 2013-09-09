@@ -74,7 +74,3 @@ process.on 'message', (task) ->
       type: 'completed'
       task: task.id
       workload: worker.getWorkload()
-  process.send
-    type: 'accepted'
-    task: task.id
-    workload: worker.getWorkload()

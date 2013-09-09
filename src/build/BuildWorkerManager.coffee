@@ -8,7 +8,7 @@ class BuildWorkerManager
   ###
 
   # maximum number of unacknowleged tasks after which the worker stops accepting new tasks
-  @MAX_SENDING_TASKS = 3
+  @MAX_SENDING_TASKS = 30000
   # number of milliseconds of idle state (without active tasks) after which the worker is auto-stopped
   @IDLE_STOP_TIMEOUT = 1000
   # worker id counter
@@ -41,12 +41,6 @@ class BuildWorkerManager
     @_process.on 'message', (m) =>
       @_workload = m.workload if m.workload?
       switch m.type
-        when 'accepted'
-          if not @canAcceptTask()
-            @_sendingTask--
-            @_acceptReady.resolve(this)
-          else
-            @_sendingTask--
         when 'completed'
           @_tasks[m.task].resolve()
           delete @_tasks[m.task]
@@ -88,7 +82,7 @@ class BuildWorkerManager
   acceptReady: -> @_acceptReady
 
 
-  getWorkload: -> @_workload * @_taskCounter + 1
+  getWorkload: -> (@_workload + 0.1) * @_taskCounter + 1
 
 
 
