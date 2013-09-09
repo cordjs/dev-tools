@@ -453,14 +453,17 @@ defineFuture = (_) ->
         Future-style:
           Future.call(fs.readFile, '/tmp/file').failAloud().done (data) ->
             // do something with data
-      @param Function fn callback-style function to be called (e.g. fs.readFile)
+      @param Function|Tuple[Object, String] fn callback-style function to be called (e.g. fs.readFile)
       @param Any args* arguments of that function without last callback-result argument.
       @return Future[A]
       ###
       result = @single()
       args.push (callbackArgs...) ->
         result.complete.apply(result, callbackArgs)
-      fn.apply(null, args)
+      if _.isArray(fn)
+        fn[0][fn[1]].apply(fn[0], args)
+      else
+        fn.apply(null, args)
       result
 
 

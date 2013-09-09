@@ -5,6 +5,7 @@ path = require('path')
 _ = require('underscore')
 
 {CompileCoffeeScript} = require('./task/CompileCoffeeScript')
+{CompileStylus} = require('./task/CompileStylus')
 {Fake} = require('./task/Fake')
 {CopyFile} = require('./task/CopyFile')
 
@@ -38,6 +39,7 @@ class BuildWorker
     ###
     switch path.extname(taskParams.file)
       when '.coffee' then CompileCoffeeScript
+      when '.styl' then CompileStylus
       when '.js' then CopyFile
       else Fake
 
