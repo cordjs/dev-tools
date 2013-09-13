@@ -10,7 +10,7 @@ class BuildWorkerManager
   # maximum number of unacknowleged tasks after which the worker stops accepting new tasks
   @MAX_SENDING_TASKS = 30000
   # number of milliseconds of idle state (without active tasks) after which the worker is auto-stopped
-  @IDLE_STOP_TIMEOUT = 1000
+  @IDLE_STOP_TIMEOUT = 3000
   # worker id counter
   @_idCounter: 0
   # worker id (mostly for debugging purposes)
@@ -31,6 +31,7 @@ class BuildWorkerManager
   totalTasksCount: 0
   # timeout handle need to auto-stop the worker when idle
   _killTimeout: null
+  _stopped: false
 
   constructor: (@manager) ->
     @id = ++BuildWorkerManager._idCounter
@@ -45,7 +46,7 @@ class BuildWorkerManager
           @_tasks[m.task].resolve()
           delete @_tasks[m.task]
           @_taskCounter--
-          if @_taskCounter == 0
+          if @_taskCounter == 0 and not @_stopped
             @_killTimeout = setTimeout =>
               @stop() if @_taskCounter == 0
             , BuildWorkerManager.IDLE_STOP_TIMEOUT
@@ -72,8 +73,11 @@ class BuildWorkerManager
     ###
     Kills worker process and stops this worker.
     ###
-    @_process.kill()
-    @manager.stopWorker(this)
+    clearTimeout(@_killTimeout) if @_killTimeout
+    if not @_stopped
+      @_process.kill()
+      @manager.stopWorker(this)
+      @_stopped = true
 
 
   canAcceptTask: -> @_sendingTask < BuildWorkerManager.MAX_SENDING_TASKS

@@ -155,6 +155,18 @@ defineFuture = (_) ->
       this
 
 
+    link: (anotherPromise) ->
+      ###
+      Inversion of `when` method. Tells that the given future will complete when this future will complete.
+      Just syntax sugar to convert anotherFuture.when(future) to future.link(anotherFuture).
+      In some cases using link instead of when leads to more elegant code.
+      @param Future anotherFuture
+      @return Future self
+      ###
+      anotherPromise.when(this)
+      this
+
+
     done: (callback) ->
       ###
       Defines callback function to be called when future is resolved.
@@ -301,9 +313,8 @@ defineFuture = (_) ->
       @param Future those another futures
       @return Future
       ###
-      result = new Future
-      those.push(this)
-      result.when.apply(result, those)
+      those.unshift(this)
+      Future.sequence(those).map (result) -> result
 
 
     @sequence: (futureList) ->
@@ -318,7 +329,7 @@ defineFuture = (_) ->
           f.done (res) ->
             result[i] = res
             promise.resolve()
-      promise.map -> result
+      promise.map -> [result]
 
 
     @select: (futureList) ->

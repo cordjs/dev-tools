@@ -61,6 +61,10 @@ class BuildManager
     result
 
 
+  @stop: ->
+    w.stop() for w in @workers
+
+
   @stopWorker: (worker) ->
     @workers = _.without(@workers, worker)
     console.log "Worker #{ worker.id } stopped. Total tasks count: #{ worker.totalTasksCount }"
