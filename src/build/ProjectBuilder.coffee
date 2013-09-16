@@ -2,8 +2,8 @@ path = require('path')
 requirejs = require('requirejs')
 walk = require('walk')
 {EventEmitter} = require('events')
-{Future} = require('../utils/Future')
-{buildManager} = require('./BuildManager')
+Future = require('../utils/Future')
+buildManager = require('./BuildManager')
 
 
 class ProjectBuilder extends EventEmitter
@@ -195,4 +195,4 @@ getFileInfo = (file, bundle) ->
 
 
 
-exports.ProjectBuilder = ProjectBuilder
+module.exports = ProjectBuilder

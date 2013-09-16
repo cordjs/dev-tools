@@ -1,7 +1,7 @@
 fs = require('fs')
 path = require('path')
 mkdirp = require('mkdirp')
-{BuildTask} = require('./BuildTask')
+BuildTask = require('./BuildTask')
 
 
 class CopyFile extends BuildTask
@@ -18,8 +18,5 @@ class CopyFile extends BuildTask
         @readyPromise.resolve()
 
 
-  getWorkload: -> 0.2
 
-
-
-exports.CopyFile = CopyFile
+module.exports = CopyFile

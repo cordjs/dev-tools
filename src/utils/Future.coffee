@@ -521,4 +521,4 @@ defineFuture = (_) ->
       fn.apply(_console, args)
 
 
-exports.Future = defineFuture(require('underscore'))
+module.exports = defineFuture(require('underscore'))

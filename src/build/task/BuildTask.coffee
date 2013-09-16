@@ -1,7 +1,7 @@
 path = require('path')
 mkdirp = require('mkdirp')
 
-{Future} = require('../../utils/Future')
+Future = require('../../utils/Future')
 
 class BuildTask
   ###
@@ -28,8 +28,5 @@ class BuildTask
   ready: -> @readyPromise
 
 
-  getWorkload: -> 0
 
-
-
-exports.BuildTask = BuildTask
+module.exports = BuildTask

@@ -3,8 +3,8 @@ path = require('path')
 mkdirp = require('mkdirp')
 stylus = require('stylus')
 nib = require('nib')
-{Future} = require('../../utils/Future')
-{BuildTask} = require('./BuildTask')
+Future = require('../../utils/Future')
+BuildTask = require('./BuildTask')
 
 pathToCore = "bundles/cord/core"
 
@@ -57,8 +57,5 @@ class CompileStylus extends BuildTask
     @readyPromise.when(f)
 
 
-  getWorkload: -> 1
 
-
-
-exports.CompileStylus = CompileStylus
+module.exports = CompileStylus

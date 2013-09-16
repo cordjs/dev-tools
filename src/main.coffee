@@ -1,5 +1,5 @@
 cliParser = require('./cli-parser')
-{ProjectBuilder} = require('./build/ProjectBuilder')
+ProjectBuilder = require('./build/ProjectBuilder')
 
 exports.main = ->
   ###

@@ -1,7 +1,7 @@
 _ = require('underscore')
 os = require('os')
-{Future} = require('../utils/Future')
-{BuildWorkerManager} = require('./BuildWorkerManager')
+Future = require('../utils/Future')
+BuildWorkerManager = require('./BuildWorkerManager')
 
 
 class BuildManager
@@ -72,4 +72,4 @@ class BuildManager
 
 
 
-exports.buildManager = BuildManager
+module.exports = BuildManager

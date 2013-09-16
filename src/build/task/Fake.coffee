@@ -1,5 +1,5 @@
-{Future} = require('../../utils/Future')
-{BuildTask} = require('./BuildTask')
+Future = require('../../utils/Future')
+BuildTask = require('./BuildTask')
 
 
 class Fake extends BuildTask
@@ -15,4 +15,4 @@ class Fake extends BuildTask
 
 
 
-exports.Fake = Fake
+module.exports = Fake

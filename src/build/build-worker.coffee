@@ -3,10 +3,10 @@ Build worker process main script.
 ###
 _ = require('underscore')
 
-{CompileCoffeeScript} = require('./task/CompileCoffeeScript')
-{CompileStylus} = require('./task/CompileStylus')
-{Fake} = require('./task/Fake')
-{CopyFile} = require('./task/CopyFile')
+CompileCoffeeScript = require('./task/CompileCoffeeScript')
+CompileStylus = require('./task/CompileStylus')
+Fake = require('./task/Fake')
+CopyFile = require('./task/CopyFile')
 
 
 class BuildWorker
@@ -41,14 +41,6 @@ class BuildWorker
       when '.styl' then CompileStylus
       when '.js' then CopyFile
       else Fake
-
-
-  getWorkload: ->
-    ###
-    Calculates and returns summary workload of all active tasks of this worker process
-    @return Float
-    ###
-    _.reduce _.values(@tasks), ((memo, t) -> memo + t.getWorkload()), 0
 
 
 

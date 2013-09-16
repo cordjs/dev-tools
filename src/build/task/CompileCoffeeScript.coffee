@@ -2,8 +2,8 @@ fs = require('fs')
 path = require('path')
 coffee = require('coffee-script')
 mkdirp = require('mkdirp')
-{Future} = require('../../utils/Future')
-{BuildTask} = require('./BuildTask')
+Future = require('../../utils/Future')
+BuildTask = require('./BuildTask')
 
 
 class CompileCoffeeScript extends BuildTask
@@ -26,8 +26,5 @@ class CompileCoffeeScript extends BuildTask
     @readyPromise.when(f)
 
 
-  getWorkload: -> 1
 
-
-
-exports.CompileCoffeeScript = CompileCoffeeScript
+module.exports = CompileCoffeeScript

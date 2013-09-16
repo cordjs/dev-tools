@@ -1,5 +1,5 @@
 {fork} = require('child_process')
-{Future} = require('../utils/Future')
+Future = require('../utils/Future')
 
 
 class BuildWorkerManager
@@ -100,4 +100,4 @@ class BuildWorkerManager
 
 
 
-exports.BuildWorkerManager = BuildWorkerManager
+module.exports = BuildWorkerManager
