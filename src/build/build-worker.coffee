@@ -5,6 +5,7 @@ _ = require('underscore')
 
 CompileCoffeeScript = require('./task/CompileCoffeeScript')
 CompileStylus = require('./task/CompileStylus')
+CompileWidgetTemplate = require('./task/CompileWidgetTemplate')
 Fake = require('./task/Fake')
 CopyFile = require('./task/CopyFile')
 
@@ -36,10 +37,16 @@ class BuildWorker
     Selects task class by task params
     @return Class
     ###
-    switch taskParams.info.ext
+    info = taskParams.info
+    switch info.ext
       when '.coffee' then CompileCoffeeScript
       when '.styl' then CompileStylus
       when '.js' then CopyFile
+      when '.html'
+        if info.isWidgetTemplate
+          CompileWidgetTemplate
+        else
+          Fake
       else Fake
 
 

@@ -6,7 +6,7 @@ nib = require('nib')
 Future = require('../../utils/Future')
 BuildTask = require('./BuildTask')
 
-pathToCore = "bundles/cord/core"
+pathToCore = 'bundles/cord/core'
 
 
 stylusLib = (style) ->

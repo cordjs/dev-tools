@@ -10,7 +10,7 @@ class BuildWorkerManager
   # maximum number of unacknowleged tasks after which the worker stops accepting new tasks
   @MAX_SENDING_TASKS = 30000
   # number of milliseconds of idle state (without active tasks) after which the worker is auto-stopped
-  @IDLE_STOP_TIMEOUT = 3000
+  @IDLE_STOP_TIMEOUT = 5000
   # worker id counter
   @_idCounter: 0
   # worker id (mostly for debugging purposes)
@@ -72,10 +72,16 @@ class BuildWorkerManager
 
 
   getTaskWorkload: (taskParams) ->
-    switch taskParams.info.ext
-      when '.coffee' then 1
-      when '.styl' then 1.1
+    info = taskParams.info
+    switch info.ext
+      when '.coffee' then 1.2
+      when '.styl' then 1.5
       when '.js' then 0.2
+      when '.html'
+        if info.isWidgetTemplate
+          1
+        else
+          0
       else 0
 
 

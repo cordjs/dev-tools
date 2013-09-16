@@ -15,15 +15,14 @@ class CompileCoffeeScript extends BuildTask
     src = "#{ @params.baseDir }/#{ @params.file }"
     dst = "#{ @params.targetDir }/#{ dirname }/#{ basename }.js"
 
-    f = Future.call(fs.readFile, src, 'utf8').map (coffeeString) ->
+    Future.call(fs.readFile, src, 'utf8').map (coffeeString) ->
       coffee.compile coffeeString,
         compile: true
         bare: true
     .zip(Future.call(mkdirp, path.dirname(dst))).flatMap (jsString) =>
       Future.call(fs.writeFile, dst, jsString)
     .failAloud()
-
-    @readyPromise.when(f)
+    .link(@readyPromise)
 
 
 

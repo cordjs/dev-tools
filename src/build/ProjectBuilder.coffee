@@ -149,7 +149,7 @@ getFileInfo = (file, bundle) ->
   parts = file.split(path.sep)
   inPublic = parts[0] == 'public'
   fileName = parts.pop()
-  lastDirName = parts.pop()
+  lastDirName = parts[parts.length - 1]
   ext = path.extname(fileName)
   fileWithoutExt = fileName.slice(0, -ext.length)
   if inPublic
@@ -162,7 +162,7 @@ getFileInfo = (file, bundle) ->
           bundleOk = false
           break
       if bundleOk
-        inBundleIndex = 2 + bundleParts.length + 1
+        inBundleIndex = 2 + bundleParts.length
         inWidgets = parts[inBundleIndex] == 'widgets'
         inTemplates = parts[inBundleIndex] == 'templates'
         inModels = parts[inBundleIndex] == 'models'

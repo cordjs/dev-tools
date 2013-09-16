@@ -498,7 +498,8 @@ defineFuture = (_) ->
       @return Future(modules...)
       ###
       result = @single()
-      require paths, (modules...) ->
+      requirejs = require('requirejs')
+      requirejs paths, (modules...) ->
         result.resolve.apply(result, modules)
       , (err) ->
         result.reject(err)
