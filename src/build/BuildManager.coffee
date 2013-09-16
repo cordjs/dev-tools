@@ -10,18 +10,19 @@ class BuildManager
   @static
   ###
 
-  @workers = []
-  @MAX_WORKERS = Math.max(os.cpus().length, 2)
+  @workers: []
+  @MAX_WORKERS: Math.max(os.cpus().length, 2)
 
   @_taskIdCounter: 0
 
-  @createTask: (relativeFilePath, baseDir, targetDir) ->
+  @createTask: (relativeFilePath, baseDir, targetDir, fileInfo) ->
     @findBestWorker().flatMap (worker) =>
       worker.addTask
         id: ++@_taskIdCounter
         file: relativeFilePath
         baseDir: baseDir
         targetDir: targetDir
+        info: fileInfo
 
 
   @findBestWorker: ->
@@ -31,7 +32,7 @@ class BuildManager
     ###
     result = Future.single()
 
-    # firstly take router without any workload
+    # firstly take worker without any workload
     emptyWorker = _.find @workers, (w) -> w.getWorkload() == 0
     if emptyWorker
       result.resolve(emptyWorker)

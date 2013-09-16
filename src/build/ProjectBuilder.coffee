@@ -34,7 +34,9 @@ class ProjectBuilder extends EventEmitter
          and root.indexOf('.hg') < 0 and stat.name.indexOf('.hg') < 0
           relativeDir = root.substr(relativePos)
           payloadCallback("#{relativeDir}/#{stat.name}", stat)
-        setTimeout next, 0
+          setTimeout next, 0
+        else
+          next()
 
       walker.on 'end', ->
         console.log "walker for dir #{ dir } completed!"
@@ -45,19 +47,32 @@ class ProjectBuilder extends EventEmitter
     scanRegularDir = (dir) =>
       scanDir dir, (relativeName) =>
         completePromise.when(
-          buildManager.createTask(relativeName, @params.baseDir, @params.targetDir)
+          buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, getFileInfo(relativeName))
         )
 
 
     scanCore = =>
       scanDir "#{ @params.baseDir }/public/bundles/cord/core", (relativeName) =>
-        if inWidgetsDir(relativeName)
-          completePromise.when(
-            corePromise.flatMap =>
-              buildManager.createTask(relativeName, @params.baseDir, @params.targetDir)
-          )
+        info = getFileInfo(relativeName, 'cord/core')
+        if info.inWidgets
+          if info.isWidget
+            task = corePromise.flatMap =>
+              buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
+            completePromise.when(task)
+            widgetClassesPromise.when(task)
+          else if info.isWidgetTemplate
+            widgetClassesPromise.flatMap =>
+              buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
+            .link(completePromise)
+          else if info.isStylus
+            pathUtilsPromise.flatMap =>
+              buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
+            .link(completePromise)
+          else
+            buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
+              .link(completePromise)
         else
-          task = buildManager.createTask(relativeName, @params.baseDir, @params.targetDir)
+          task = buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
           corePromise.when(task)
           completePromise.when(task)
       .on 'end', ->
@@ -67,21 +82,22 @@ class ProjectBuilder extends EventEmitter
     scanBundle = (bundle) =>
       widgetClassesPromise.fork()
       scanDir "#{ @params.baseDir }/public/bundles/#{ bundle }", (relativeName) =>
-        if isWidgetClass(relativeName, bundle)
+        info = getFileInfo(relativeName, bundle)
+        if info.isWidget
           task = corePromise.flatMap =>
-            buildManager.createTask(relativeName, @params.baseDir, @params.targetDir)
+            buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
           completePromise.when(task)
           widgetClassesPromise.when(task)
-        else if isWidgetTemplate(relativeName, bundle)
+        else if info.isWidgetTemplate
           widgetClassesPromise.flatMap =>
-            buildManager.createTask(relativeName, @params.baseDir, @params.targetDir)
+            buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
           .link(completePromise)
-        else if isStylus(relativeName)
+        else if info.isStylus
           pathUtilsPromise.flatMap =>
-            buildManager.createTask(relativeName, @params.baseDir, @params.targetDir)
+            buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
           .link(completePromise)
         else
-          buildManager.createTask(relativeName, @params.baseDir, @params.targetDir)
+          buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
             .link(completePromise)
       .on 'end', ->
         widgetClassesPromise.resolve()
@@ -89,15 +105,20 @@ class ProjectBuilder extends EventEmitter
 
     appConfFile = 'public/app/application'
 
-    appConfPromise = buildManager.createTask("#{ appConfFile }.coffee", @params.baseDir, @params.targetDir)
+    appConfPromise = buildManager.createTask(
+      "#{ appConfFile }.coffee", @params.baseDir, @params.targetDir,
+      getFileInfo("#{ appConfFile }.coffee")
+    )
     pathUtilsPromise = buildManager.createTask(
       'public/bundles/cord/core/requirejs/pathUtils.coffee',
-      @params.baseDir, @params.targetDir
+      @params.baseDir, @params.targetDir,
+      getFileInfo('public/bundles/cord/core/requirejs/pathUtils.coffee', 'cord/core')
     )
     scanRegularDir(@params.baseDir + '/public/vendor')
     scanRegularDir(@params.baseDir + '/conf')
     #scanRegularDir(@params.baseDir + '/node_modules')
-    completePromise.when(buildManager.createTask("server.coffee", @params.baseDir, @params.targetDir))
+    buildManager.createTask('server.coffee', @params.baseDir, @params.targetDir, getFileInfo('server.coffee'))
+      .link(completePromise)
 
     appConfPromise.done =>
       scanCore()
@@ -118,41 +139,59 @@ class ProjectBuilder extends EventEmitter
 
 
 
-inWidgetsDir = (file) ->
-  /public\/bundles\/.+\/widgets\//.test(file)
-
-isWidgetClass = (file, bundle) ->
-  ext = path.extname(file)
-  if ext = '.coffee'
-    if file.indexOf("public/bundles/#{bundle}/widgets/") == 0
-      base = path.basename(file)
-      name = base.slice(0, -ext.length)
-      dir = file.substr(-(base.length + name.length + 1), name.length)
-      dir = dir.charAt(0).toUpperCase() + dir.slice(1)
-      dir == name
+getFileInfo = (file, bundle) ->
+  ###
+  Returns a lot of file properties from the framework's point of view
+  @param String file path to file
+  @param (optional)String bundle bundle to which this file belongs
+  @return Object key-value with file properties
+  ###
+  parts = file.split(path.sep)
+  inPublic = parts[0] == 'public'
+  fileName = parts.pop()
+  lastDirName = parts.pop()
+  ext = path.extname(fileName)
+  fileWithoutExt = fileName.slice(0, -ext.length)
+  if inPublic
+    inBundles = parts[1] == 'bundles'
+    if inBundles
+      bundleParts = bundle.split('/')
+      bundleOk = true
+      for p, i in bundleParts
+        if p != parts[2 + i]
+          bundleOk = false
+          break
+      if bundleOk
+        inBundleIndex = 2 + bundleParts.length + 1
+        inWidgets = parts[inBundleIndex] == 'widgets'
+        inTemplates = parts[inBundleIndex] == 'templates'
+        inModels = parts[inBundleIndex] == 'models'
+        if inWidgets
+          if ext == '.coffee'
+            lowerName = fileWithoutExt.charAt(0).toLowerCase() + fileWithoutExt.slice(1)
+            isWidget = lastDirName == lowerName
+            isBehaviour = (lastDirName + 'Behaviour') == lowerName
+          else if ext == '.html'
+            isWidgetTemplate = lastDirName == fileWithoutExt
     else
-      false
-  else
-    false
+      bundle = null
 
-isCoffee = (file) ->
-  path.extname(file) == '.coffee'
-
-isStylus = (file) ->
-  path.extname(file) == '.styl'
-
-isWidgetTemplate = (file, bundle) ->
-  ext = path.extname(file)
-  if ext = '.html'
-    if file.indexOf("public/bundles/#{bundle}/widgets/") == 0
-      base = path.basename(file)
-      name = base.slice(0, -ext.length)
-      dir = file.substr(-(base.length + name.length + 1), name.length)
-      dir == name
-    else
-      false
-  else
-    false
+  fileName: fileName
+  ext: ext
+  fileNameWithoutExt: fileWithoutExt
+  lastDirName: lastDirName
+  bundle: bundle
+  inPublic: inPublic
+  inBundles: inBundles ? false
+  inWidgets: inWidgets ? false
+  inTemplates: inTemplates ? false
+  inModels: inModels ? false
+  isWidget: isWidget ? false
+  isBehaviour: isBehaviour ? false
+  isWidgetTemplate: isWidgetTemplate ? false
+  isCoffee: ext == '.coffee'
+  isHtml: ext == '.html'
+  isStylus: ext == '.styl'
 
 
 

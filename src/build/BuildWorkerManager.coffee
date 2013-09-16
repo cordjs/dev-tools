@@ -40,7 +40,6 @@ class BuildWorkerManager
     @_tasks = {}
     # worker process communication callback
     @_process.on 'message', (m) =>
-      @_workload = m.workload if m.workload?
       switch m.type
         when 'completed'
           @_tasks[m.task].resolve()
@@ -64,9 +63,20 @@ class BuildWorkerManager
       @_taskCounter++
       @totalTasksCount++
       clearTimeout(@_killTimeout) if @_killTimeout
-      @_tasks[taskParams.id]
+      taskWorkload = @getTaskWorkload(taskParams)
+      @_workload += taskWorkload
+      @_tasks[taskParams.id].done =>
+        @_workload -= taskWorkload
     else
       throw new Error("Can't accept task now!")
+
+
+  getTaskWorkload: (taskParams) ->
+    switch taskParams.info.ext
+      when '.coffee' then 1
+      when '.styl' then 1.1
+      when '.js' then 0.2
+      else 0
 
 
   stop: ->
@@ -86,7 +96,7 @@ class BuildWorkerManager
   acceptReady: -> @_acceptReady
 
 
-  getWorkload: -> (@_workload + 0.1) * @_taskCounter + 1
+  getWorkload: -> @_workload
 
 
 
