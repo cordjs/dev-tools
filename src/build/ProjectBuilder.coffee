@@ -1,4 +1,5 @@
 path = require('path')
+fs = require('fs')
 requirejs = require('requirejs')
 walk = require('walk')
 {EventEmitter} = require('events')
@@ -45,60 +46,68 @@ class ProjectBuilder extends EventEmitter
 
 
     scanRegularDir = (dir) =>
-      scanDir dir, (relativeName) =>
-        completePromise.when(
-          buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, getFileInfo(relativeName))
-        )
+      scanDir dir, (relativeName, stat) =>
+        info = getFileInfo(relativeName)
+        sourceModified(relativeName, stat, @params.targetDir, info).map (modified) =>
+          if modified
+            completePromise.when(
+              buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, getFileInfo(relativeName))
+            )
 
 
     scanCore = =>
-      scanDir "#{ @params.baseDir }/public/bundles/cord/core", (relativeName) =>
+      scanDir "#{ @params.baseDir }/public/bundles/cord/core", (relativeName, stat) =>
         info = getFileInfo(relativeName, 'cord/core')
-        if info.inWidgets
-          if info.isWidget
-            task = corePromise.flatMap =>
-              buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
-            completePromise.when(task)
-            widgetClassesPromise.when(task)
-          else if info.isWidgetTemplate
-            widgetClassesPromise.flatMap =>
-              buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
-            .link(completePromise)
-          else if info.isStylus
-            pathUtilsPromise.flatMap =>
-              buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
-            .link(completePromise)
-          else
-            buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
-              .link(completePromise)
-        else
-          task = buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
-          corePromise.when(task)
-          completePromise.when(task)
+        sourceModified(relativeName, stat, @params.targetDir, info).map (modified) =>
+          if modified
+            if info.inWidgets
+              if info.isWidget
+                task = corePromise.flatMap =>
+                  buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
+                completePromise.when(task)
+                widgetClassesPromise.when(task)
+              else if info.isWidgetTemplate
+                widgetClassesPromise.flatMap =>
+                  buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
+                .link(completePromise)
+              else if info.isStylus
+                pathUtilsPromise.flatMap =>
+                  buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
+                .link(completePromise)
+              else
+                buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
+                  .link(completePromise)
+            else
+              task = buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
+              corePromise.when(task)
+              completePromise.when(task)
+        .link(corePromise)
       .on 'end', ->
         corePromise.resolve()
 
 
     scanBundle = (bundle) =>
       widgetClassesPromise.fork()
-      scanDir "#{ @params.baseDir }/public/bundles/#{ bundle }", (relativeName) =>
+      scanDir "#{ @params.baseDir }/public/bundles/#{ bundle }", (relativeName, stat) =>
         info = getFileInfo(relativeName, bundle)
-        if info.isWidget
-          task = corePromise.flatMap =>
-            buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
-          completePromise.when(task)
-          widgetClassesPromise.when(task)
-        else if info.isWidgetTemplate
-          widgetClassesPromise.flatMap =>
-            buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
-          .link(completePromise)
-        else if info.isStylus
-          pathUtilsPromise.flatMap =>
-            buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
-          .link(completePromise)
-        else
-          buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
-            .link(completePromise)
+        sourceModified(relativeName, stat, @params.targetDir, info).map (modified) =>
+          if modified
+            if info.isWidget
+              task = corePromise.flatMap =>
+                buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
+              completePromise.when(task)
+              widgetClassesPromise.when(task)
+            else if info.isWidgetTemplate
+              widgetClassesPromise.flatMap =>
+                buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
+              .link(completePromise)
+            else if info.isStylus
+              pathUtilsPromise.flatMap =>
+                buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
+              .link(completePromise)
+            else
+              buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
+                .link(completePromise)
       .on 'end', ->
         widgetClassesPromise.resolve()
 
@@ -192,6 +201,40 @@ getFileInfo = (file, bundle) ->
   isCoffee: ext == '.coffee'
   isHtml: ext == '.html'
   isStylus: ext == '.styl'
+
+
+sourceModified = (file, srcStat, targetDir, info) ->
+  ###
+  Asynchronously returns true if destination built file modification time is earlier than the source
+   (file need to be recompiled)
+  @param String file relative file name
+  @param StatInfo srcStat result of stat-call for the source file
+  @param String targetDir base directory for destination file
+  @param Object info framework-related information about the file
+  @return Future[Boolean]
+  ###
+  dstPath = path.join(targetDir, makeDestinationFile(file, info))
+  Future.call(fs.stat, dstPath).map (dstStat) ->
+    srcStat.mtime.getTime() > dstStat.mtime.getTime()
+  .failMap ->
+    true
+
+
+makeDestinationFile = (file, info) ->
+  ###
+  Returns destination file relative name based on source file and framework-related information
+  @param String file relative file name
+  @param Object info framework-related information about the file
+  @return String
+  ###
+  if info.isCoffee
+    path.dirname(file) + path.sep + info.fileNameWithoutExt + '.js'
+  else if info.isStylus
+    path.dirname(file) + path.sep + info.fileNameWithoutExt + '.css'
+  else if info.isWidgetTemplate
+    file + '.js'
+  else
+    file
 
 
 

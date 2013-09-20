@@ -307,6 +307,18 @@ defineFuture = (_) ->
       result
 
 
+    failMap: (callback) ->
+      result = Future.single()
+      @done (args...) -> result.resolve.apply(result, args)
+      @fail (err) ->
+        mapRes = callback.call(null, err)
+        if _.isArray(mapRes)
+          result.resolve.apply(result, mapRes)
+        else
+          result.resolve(mapRes)
+      result
+
+
     zip: (those...) ->
       ###
       Zips the values of this and that future, and creates a new future holding the tuple of their results.
