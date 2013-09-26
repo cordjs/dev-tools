@@ -16,6 +16,7 @@ publicDir = basePath  = 'public'
 outputDir             = 'target'
 config                = 'default'
 port                  = 1337
+debugMode             = false
 watchModeEnable       = false
 sources               = []
 widgetsWaitCompiler   = []
@@ -53,6 +54,7 @@ commander
   .option('-p, --port [port]',   'server listening port [' + port + ']', port)
   .option('-s, --server',        'start server')
   .option('-w, --watch',         'watch scripts for changes and rerun commands')
+  .option('-g, --debug',         'flag for node debugging')
   .version(packageInfo.version,  '-v, --version')
 
 commander
@@ -101,6 +103,7 @@ exports.run = ->
   config = commander.config                   if commander.config
   port = commander.port                       if commander.port
   commander.server = commander.watch = true   if commander.autorestart
+  debugMode = true                            if commander.debug
 
   if !commander.args.length
     mainCommand()
@@ -250,7 +253,10 @@ timerErrServer = null
 
 
 startServer = ->
-  serverChild = spawn "node", [path.join(outputDir, 'server.js'), path.join(outputDir, publicDir), config, port]
+  if debugMode
+    serverChild = spawn "node", ['--debug', path.join(outputDir, 'server.js'), path.join(outputDir, publicDir), config, port]
+  else
+    serverChild = spawn "node", [path.join(outputDir, 'server.js'), path.join(outputDir, publicDir), config, port]
 
   serverChild.stdout.on 'data', (data) ->
 #    iErrServerStart = 0
