@@ -38,16 +38,11 @@ class BuildWorker
     @return Class
     ###
     info = taskParams.info
-    switch info.ext
-      when '.coffee' then CompileCoffeeScript
-      when '.styl' then CompileStylus
-      when '.js' then CopyFile
-      when '.html'
-        if info.isWidgetTemplate
-          CompileWidgetTemplate
-        else
-          Fake
-      else Fake
+    if info.isCoffee then CompileCoffeeScript
+    else if info.isStylus then CompileStylus
+    else if info.isWidgetTemplate then CompileWidgetTemplate
+    else if info.ext == '.orig' or info.ext.substr(-1) == '~' then Fake
+    else CopyFile
 
 
 
