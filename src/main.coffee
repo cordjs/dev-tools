@@ -1,5 +1,6 @@
 cliParser = require('./cli-parser')
 ProjectBuilder = require('./build/ProjectBuilder')
+rmrf = require('./utils/rmrf')
 
 exports.main = ->
   ###
@@ -26,8 +27,9 @@ exports.main = ->
         # restart server
 
 
-    clean: ->
+    clean: (options) ->
       console.log "Cleaning project..."
+      rmrf(normalizeBuildOptions(options).targetDir)
 
 
 normalizeBuildOptions = (options) ->

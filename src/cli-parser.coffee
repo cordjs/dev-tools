@@ -50,6 +50,8 @@ exports.run = (actionCallbacks) ->
   program
     .command('clean')
     .description('clean (remove) build target directory')
+    .option('-o, --out <dir>', 'output (target) directory relative to project root. defaults to "' +
+                                  DEFAULT_OUTPUT_DIR + '"', DEFAULT_OUTPUT_DIR)
     .action(actionCallbacks.clean)
 
   program.parse(process.argv)
