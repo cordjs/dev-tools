@@ -16,11 +16,12 @@ defineFuture = (_) ->
       promise = new Future
       result = []
       for i in [1..10]
-        promise.fork()
-        setTimeout ->
-          result.push(i)
-          promise.resolve()
-        , 1000
+        do (i) =>
+          promise.fork()
+          setTimeout ->
+            result.push(i)
+            promise.resolve()
+          , 1000
       promise.done ->
         _console.log result.join(', ')
 
@@ -171,7 +172,7 @@ defineFuture = (_) ->
       ###
       Defines callback function to be called when future is resolved.
       If all waiting values are already resolved then callback is fired immedialtely.
-      If done method is called several times than all passed functions will be called.
+      If fail method is called several times than all passed functions will be called.
       ###
       @_doneCallbacks.push(callback)
       @_runDoneCallbacks() if @_counter == 0 and @_state != 'rejected'
@@ -307,7 +308,14 @@ defineFuture = (_) ->
       result
 
 
-    failMap: (callback) ->
+    mapFail: (callback) ->
+      ###
+      Returns new future which completes with the result of this future if it's successful or with the result
+       of the given callback if this future is failed. Error of the fail result is passed to the callback.
+      This method is helpful when it's necessary to convert error of this future to the meaningful successful result.
+      @param Function(err -> A) callback
+      @return Future[A]
+      ###
       result = Future.single()
       @done (args...) -> result.resolve.apply(result, args)
       @fail (err) ->
@@ -316,6 +324,21 @@ defineFuture = (_) ->
           result.resolve.apply(result, mapRes)
         else
           result.resolve(mapRes)
+      result
+
+
+    flatMapFail: (callback) ->
+      ###
+      Returns new future which completes with the result of this future if it's successful or with the future-result
+       of the given callback if this future is failed. Error of the fail result is passed to the callback.
+      Callback must return a Future, and resulting Future is completed when the callback-returned future is completed.
+      This method is helpful when it's necessary to convert error of this future to the meaningful successful result.
+      @param Function(err -> Future(A)) callback
+      @return Future[A]
+      ###
+      result = Future.single()
+      @done (args...) -> result.resolve.apply(result, args)
+      @fail (err)     -> result.when(callback.call(null, err))
       result
 
 
