@@ -364,6 +364,8 @@ defineFuture = (_) ->
           f.done (res) ->
             result[i] = res
             promise.resolve()
+          .fail (e) ->
+            promise.reject(e)
       promise.map -> [result]
 
 
