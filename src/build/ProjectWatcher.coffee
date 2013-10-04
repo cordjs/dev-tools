@@ -95,8 +95,10 @@ class ProjectWatcher extends EventEmitter
             else
               @_addChangeItem(watchInfo, fullName, stat)
               @_addRemoveItem(watchInfo, oldName)
+              @_registerInode(fullName, stat.ino)
           else
             @_addChangeItem(watchInfo, fullName, stat)
+            @_registerInode(fullName, stat.ino)
     else
       throw new Error("Filename is not supported in watch: #{ JSON.stringify(watchInfo) }!")
 

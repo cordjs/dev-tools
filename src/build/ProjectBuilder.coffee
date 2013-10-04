@@ -4,9 +4,12 @@ requirejs = require('requirejs')
 walk = require('walk')
 {EventEmitter} = require('events')
 _ = require('underscore')
+
 Future = require('../utils/Future')
 rmrf = require('../utils/rmrf')
+
 buildManager = require('./BuildManager')
+BuildSession = require('./BuildSession')
 fileInfo = require('./FileInfo')
 ProjectWatcher = require('./ProjectWatcher')
 
@@ -167,16 +170,30 @@ class ProjectBuilder extends EventEmitter
       console.log "Build complete in #{ (diff[0] * 1e9 + diff[1]) / 1e6 } ms"
       buildManager.stop()
 
+    @_previousSessionPromise = completePromise
+
     this
 
 
   setupWatcher: ->
     @watcher = new ProjectWatcher(@params.baseDir)
-    @watcher.on 'change', (changes) ->
-      console.log "change", changes
-      for removed in _.sortBy(changes.removed, (f) -> f.length).reverse()
-        console.log "removing #{removed}..."
-        rmrf(fileInfo.getTargetForSource(removed)).failAloud()
+    @watcher.on 'change', (changes) =>
+      currentSessionPromise = new Future
+      @_previousSessionPromise.done =>
+        rmList = for removed in _.sortBy(changes.removed, (f) -> f.length).reverse()
+          console.log "removing #{removed}..."
+          rmrf(fileInfo.getTargetForSource(removed)).failAloud()
+
+        Future.sequence(rmList).flatMap =>
+          buildSession = new BuildSession(@params)
+          for file, stat of changes.changed
+            console.log "building #{file}..."
+            if stat.isFile()
+              buildSession.add(file)
+          buildSession.complete().done => @emit 'complete'
+        .link(currentSessionPromise)
+
+      @_previousSessionPromise = currentSessionPromise
 
 
   watchDir: (dir, stat) ->
