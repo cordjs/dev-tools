@@ -37,14 +37,13 @@ class ProjectBuilder extends EventEmitter
 
 
     scanDir = (dir, payloadCallback) =>
-      @watchDir(dir)
+      completePromise.done => @watchDir(dir)
 
       completePromise.fork()
       walker = walk.walk(dir)
       walker.on 'file', (root, stat, next) =>
         if   root.indexOf('.git') < 0 and stat.name.indexOf('.git') < 0 \
          and root.indexOf('.hg') < 0 and stat.name.indexOf('.hg') < 0
-          @watchFile("#{root}/#{stat.name}", stat)
           relativeDir = root.substr(relativePos)
           payloadCallback("#{relativeDir}/#{stat.name}", stat)
           setTimeout next, 0
@@ -55,7 +54,7 @@ class ProjectBuilder extends EventEmitter
         walker.on 'directory', (root, stat, next) =>
           if   root.indexOf('.git') < 0 and stat.name.indexOf('.git') < 0 \
            and root.indexOf('.hg') < 0 and stat.name.indexOf('.hg') < 0
-            @watchDir("#{root}/#{stat.name}", stat)
+            completePromise.done => @watchDir("#{root}/#{stat.name}")
           next()
 
       walker.on 'end', ->
@@ -186,22 +185,50 @@ class ProjectBuilder extends EventEmitter
 
         Future.sequence(rmList).flatMap =>
           buildSession = new BuildSession(@params)
+          sessionCompletePromise = Future.single()
+
+          scanDir = (dir) =>
+            result = Future.single()
+            sessionCompletePromise.done => @watchDir(dir)
+
+            walker = walk.walk(dir)
+            walker.on 'file', (root, stat, next) =>
+              if   root.indexOf('.git') < 0 and stat.name.indexOf('.git') < 0 \
+               and root.indexOf('.hg') < 0 and stat.name.indexOf('.hg') < 0
+                buildSession.add(path.join(root, stat.name))
+              next()
+
+            walker.on 'directory', (root, stat, next) =>
+              if   root.indexOf('.git') < 0 and stat.name.indexOf('.git') < 0 \
+               and root.indexOf('.hg') < 0 and stat.name.indexOf('.hg') < 0
+                sessionCompletePromise.done => @watchDir("#{root}/#{stat.name}")
+              next()
+
+            walker.on 'end', ->
+              console.log "walker for dir #{ dir } completed!"
+              result.resolve()
+
+            result
+
+          scanCompletePromise = new Future
           for file, stat of changes.changed
             console.log "building #{file}..."
             if stat.isFile()
               buildSession.add(file)
-          buildSession.complete().done => @emit 'complete'
+            else if stat.isDirectory()
+              scanCompletePromise.when(scanDir(file))
+          scanCompletePromise.flatMap ->
+            buildSession.complete()
+          .done =>
+            sessionCompletePromise.resolve()
+            @emit 'complete'
         .link(currentSessionPromise)
 
       @_previousSessionPromise = currentSessionPromise
 
 
-  watchDir: (dir, stat) ->
-    @watcher.addDir(dir, stat) if @params.watch
-
-
-  watchFile: (file, stat) ->
-    @watcher.registerFile(file, stat) if @params.watch
+  watchDir: (dir) ->
+    @watcher.addDir(dir) if @params.watch
 
 
 
