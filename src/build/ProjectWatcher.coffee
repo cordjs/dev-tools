@@ -135,7 +135,7 @@ class ProjectWatcher extends EventEmitter
           changeList = []
           for name in _.intersection(newItems , oldItems)
             newStat = newMap[name]
-            oldStat = newMap[name]
+            oldStat = oldMap[name]
             if newStat.mtime.getTime() != oldStat.mtime.getTime()
               if (newStat.isDirectory() and not oldStat.isDirectory()) or \
                  (not newStat.isDirectory() and oldStat.isDirectory())

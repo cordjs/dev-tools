@@ -1,6 +1,9 @@
+_ = require('underscore')
 cliParser = require('./cli-parser')
-ProjectBuilder = require('./build/ProjectBuilder')
 rmrf = require('./utils/rmrf')
+ProjectBuilder = require('./build/ProjectBuilder')
+ServerProcessManager = require('./server/ServerProcessManager')
+
 
 exports.main = ->
   ###
@@ -20,11 +23,14 @@ exports.main = ->
       ###
       Builds project and starts cordjs server
       ###
-      console.log "Starting cordjs server with options", options
-      builder = new ProjectBuilder(normalizeBuildOptions(options))
+      buildOptions = normalizeBuildOptions(options)
+      builder = new ProjectBuilder(buildOptions)
       builder.build()
+      serverOptions = normalizeServerOptions(options)
+      serverProcessManager = new ServerProcessManager(_.extend(buildOptions, serverOptions))
       builder.on 'complete', ->
-        # restart server
+        console.log "build complete. restarting..."
+        serverProcessManager.restart()
 
 
     clean: (options) ->
@@ -40,3 +46,8 @@ normalizeBuildOptions = (options) ->
   targetDir: "#{curDir}/#{options.out}"
   watch: !!options.watch
   debug: !!options.debug
+
+
+normalizeServerOptions = (options) ->
+  config: options.config
+  port: parseInt(options.port)

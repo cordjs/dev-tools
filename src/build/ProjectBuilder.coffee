@@ -20,7 +20,6 @@ class ProjectBuilder extends EventEmitter
   ###
 
   constructor: (@params) ->
-    console.log "build params", @params
     fileInfo.setDirs(@params.baseDir, @params.targetDir)
     @setupWatcher() if @params.watch
 
@@ -49,6 +48,13 @@ class ProjectBuilder extends EventEmitter
           setTimeout next, 0
         else
           next()
+
+      walker.on 'symbolicLink', (root, stat, next) ->
+        if   root.indexOf('.git') < 0 and stat.name.indexOf('.git') < 0 \
+         and root.indexOf('.hg') < 0 and stat.name.indexOf('.hg') < 0
+          relativeDir = root.substr(relativePos)
+          payloadCallback("#{relativeDir}/#{stat.name}", stat)
+        next()
 
       if (@params.watch)
         walker.on 'directory', (root, stat, next) =>
@@ -164,10 +170,11 @@ class ProjectBuilder extends EventEmitter
         widgetClassesPromise.resolve()
         completePromise.resolve()
 
-    completePromise.done ->
+    completePromise.done =>
       diff = process.hrtime(start)
       console.log "Build complete in #{ (diff[0] * 1e9 + diff[1]) / 1e6 } ms"
       buildManager.stop()
+      @emit 'complete'
 
     @_previousSessionPromise = completePromise
 
@@ -193,6 +200,12 @@ class ProjectBuilder extends EventEmitter
 
             walker = walk.walk(dir)
             walker.on 'file', (root, stat, next) =>
+              if   root.indexOf('.git') < 0 and stat.name.indexOf('.git') < 0 \
+               and root.indexOf('.hg') < 0 and stat.name.indexOf('.hg') < 0
+                buildSession.add(path.join(root, stat.name))
+              next()
+
+            walker.on 'symbolicLink', (root, stat, next) ->
               if   root.indexOf('.git') < 0 and stat.name.indexOf('.git') < 0 \
                and root.indexOf('.hg') < 0 and stat.name.indexOf('.hg') < 0
                 buildSession.add(path.join(root, stat.name))
