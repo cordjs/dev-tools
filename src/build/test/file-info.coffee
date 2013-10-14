@@ -9,6 +9,7 @@ describe 'FileInfo', ->
     'example/ns/bundle'
     'ns2/ns3/b1'
     'test/bundle'
+    'test/bundle2'
   ]
 
   it 'should setup base and target dirs correctly', ->
@@ -35,6 +36,10 @@ describe 'FileInfo', ->
 
     it 'should return empty string for incorrect path', ->
       fileInfo.detectBundle('public/test/bundle/widgets/testWidget/testWidget.html').should.equal('')
+
+    it 'should correctly detect several bundles under common namespace', ->
+      fileInfo.detectBundle('public/bundles/test/bundle/widgets/testWidget/testWidget.html').should.equal('test/bundle')
+      fileInfo.detectBundle('public/bundles/test/bundle2/widgets/testWidget/testWidget.html').should.equal('test/bundle2')
 
   describe 'getTargetForSource() should work correctly for', ->
     it 'widget class', ->

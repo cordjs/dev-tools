@@ -118,6 +118,8 @@ class ProjectWatcher extends EventEmitter
     @return Future
     ###
     result = new Future
+    summaryChangeMap = {}
+    summaryRemoveList = []
     for dir, watchInfo of dirList
       do (dir, watchInfo) =>
         result.fork()
@@ -160,10 +162,8 @@ class ProjectWatcher extends EventEmitter
               @_stopWatching(watchInfo.children[name]) if watchInfo.children[name]?
               removeListFiltered.push(path.join(dir, name))
 
-          if Object.keys(changeMap).length > 0 or removeList.length > 0
-            @emit 'change',
-              removed: removeListFiltered
-              changed: changeMap
+          _.extend(summaryChangeMap, changeMap)
+          summaryRemoveList = summaryRemoveList.concat(removeListFiltered)
 
           result.resolve()
 
@@ -175,7 +175,11 @@ class ProjectWatcher extends EventEmitter
           else
             console.error "ERROR: readdir failed", watchInfo, err
             throw err
-    result
+    result.done =>
+      if Object.keys(summaryChangeMap).length > 0 or summaryRemoveList.length > 0
+        @emit 'change',
+          removed: summaryRemoveList
+          changed: summaryChangeMap
 
 
   _stopWatching: (watchInfo) ->

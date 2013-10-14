@@ -1,8 +1,10 @@
-_ = require('underscore')
-cliParser = require('./cli-parser')
-rmrf = require('./utils/rmrf')
-ProjectBuilder = require('./build/ProjectBuilder')
-ServerProcessManager = require('./server/ServerProcessManager')
+_ = require 'underscore'
+
+rmrf = require './utils/rmrf'
+
+cliParser            = require './cli-parser'
+ProjectBuilder       = require './build/ProjectBuilder'
+ServerProcessManager = require './server/ServerProcessManager'
 
 
 exports.main = ->
@@ -36,6 +38,7 @@ exports.main = ->
     clean: (options) ->
       console.log "Cleaning project..."
       rmrf(normalizeBuildOptions(options).targetDir)
+
 
 
 normalizeBuildOptions = (options) ->

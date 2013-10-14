@@ -19,6 +19,8 @@ class ProjectBuilder extends EventEmitter
   Builds the whole cordjs application project
   ###
 
+  _emitCompletePromise: null
+
   constructor: (@params) ->
     fileInfo.setDirs(@params.baseDir, @params.targetDir)
     @setupWatcher() if @params.watch
@@ -184,8 +186,15 @@ class ProjectBuilder extends EventEmitter
   setupWatcher: ->
     @watcher = new ProjectWatcher(@params.baseDir)
     @watcher.on 'change', (changes) =>
-      currentSessionPromise = new Future
-      @_previousSessionPromise.done =>
+      if not @_emitCompletePromise?
+        @_emitCompletePromise = new Future
+        @_emitCompletePromise.fork()
+        @_emitCompletePromise.done =>
+          @emit 'complete'
+          @_emitCompletePromise = null
+      else
+        @_emitCompletePromise.fork()
+      currentSessionPromise = @_previousSessionPromise.flatMap =>
         rmList = for removed in _.sortBy(changes.removed, (f) -> f.length).reverse()
           console.log "removing #{removed}..."
           rmrf(fileInfo.getTargetForSource(removed)).failAloud()
@@ -225,17 +234,14 @@ class ProjectBuilder extends EventEmitter
 
           scanCompletePromise = new Future
           for file, stat of changes.changed
-            console.log "building #{file}..."
             if stat.isFile()
               buildSession.add(file)
             else if stat.isDirectory()
               scanCompletePromise.when(scanDir(file))
           scanCompletePromise.flatMap ->
-            buildSession.complete()
+            sessionCompletePromise.when(buildSession.complete())
           .done =>
-            sessionCompletePromise.resolve()
-            @emit 'complete'
-        .link(currentSessionPromise)
+            @_emitCompletePromise.resolve()
 
       @_previousSessionPromise = currentSessionPromise
 

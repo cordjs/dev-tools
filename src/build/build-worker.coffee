@@ -1,13 +1,15 @@
 ###
 Build worker process main script.
 ###
-_ = require('underscore')
+util = require 'util'
 
-CompileCoffeeScript = require('./task/CompileCoffeeScript')
-CompileStylus = require('./task/CompileStylus')
-CompileWidgetTemplate = require('./task/CompileWidgetTemplate')
-Fake = require('./task/Fake')
-CopyFile = require('./task/CopyFile')
+_ = require 'underscore'
+
+CompileCoffeeScript   = require './task/CompileCoffeeScript'
+CompileStylus         = require './task/CompileStylus'
+CompileWidgetTemplate = require './task/CompileWidgetTemplate'
+Fake                  = require './task/Fake'
+CopyFile              = require './task/CopyFile'
 
 
 class BuildWorker
@@ -28,7 +30,9 @@ class BuildWorker
     TaskClass = @_chooseTask(taskParams)
     task = @tasks[taskParams.id] = new TaskClass(taskParams)
     task.run()
+    util.log(">>> #{taskParams.file}...")
     task.ready().andThen =>
+#      util.log("<<< #{taskParams.file}")
       delete @tasks[taskParams.id]
 
 
@@ -54,3 +58,8 @@ process.on 'message', (task) ->
     process.send
       type: 'completed'
       task: task.id
+  .fail (err) ->
+    process.send
+      type: 'failed'
+      task: task.id
+      error: err

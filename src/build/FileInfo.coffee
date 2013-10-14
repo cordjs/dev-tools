@@ -26,7 +26,8 @@ class FileInfo
       last = parts.length - 1
       curLevel = @bundleTree
       for part, i in parts
-        curLevel[part] = if i == last then true else {}
+        if not curLevel[part]?
+          curLevel[part] = if i == last then true else {}
         curLevel = curLevel[part]
 
 
