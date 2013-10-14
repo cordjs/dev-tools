@@ -26,8 +26,25 @@ class ProjectBuilder extends EventEmitter
     @setupWatcher() if @params.watch
 
 
+  _walkerFilter: (dir, name) ->
+    ###
+    Filters hidden and temporary files from being handled by the builder.
+    @param String dir dirname
+    @param String name basename
+    @return Boolean true if the file is OK for building, false if it should be skipped
+    ###
+    if name.charAt(0) == '.'
+      false
+    else
+      ext = path.extname(name)
+      if ext == '.orig' or ext.substr(-1) == '~'
+        false
+      else
+        dir.indexOf(path.sep + '.') == -1
+
+
   build: ->
-    console.log "building project..."
+    console.log "Building project (full scan)..."
 
     start = process.hrtime()
 
@@ -43,25 +60,22 @@ class ProjectBuilder extends EventEmitter
       completePromise.fork()
       walker = walk.walk(dir)
       walker.on 'file', (root, stat, next) =>
-        if   root.indexOf('.git') < 0 and stat.name.indexOf('.git') < 0 \
-         and root.indexOf('.hg') < 0 and stat.name.indexOf('.hg') < 0
+        if @_walkerFilter(root, stat.name)
           relativeDir = root.substr(relativePos)
           payloadCallback("#{relativeDir}/#{stat.name}", stat)
           setTimeout next, 0
         else
           next()
 
-      walker.on 'symbolicLink', (root, stat, next) ->
-        if   root.indexOf('.git') < 0 and stat.name.indexOf('.git') < 0 \
-         and root.indexOf('.hg') < 0 and stat.name.indexOf('.hg') < 0
+      walker.on 'symbolicLink', (root, stat, next) =>
+        if @_walkerFilter(root, stat.name)
           relativeDir = root.substr(relativePos)
           payloadCallback("#{relativeDir}/#{stat.name}", stat)
         next()
 
       if (@params.watch)
         walker.on 'directory', (root, stat, next) =>
-          if   root.indexOf('.git') < 0 and stat.name.indexOf('.git') < 0 \
-           and root.indexOf('.hg') < 0 and stat.name.indexOf('.hg') < 0
+          if @_walkerFilter(root, stat.name)
             completePromise.done => @watchDir("#{root}/#{stat.name}")
           next()
 
@@ -209,20 +223,17 @@ class ProjectBuilder extends EventEmitter
 
             walker = walk.walk(dir)
             walker.on 'file', (root, stat, next) =>
-              if   root.indexOf('.git') < 0 and stat.name.indexOf('.git') < 0 \
-               and root.indexOf('.hg') < 0 and stat.name.indexOf('.hg') < 0
+              if @_walkerFilter(root, stat.name)
                 buildSession.add(path.join(root, stat.name))
               next()
 
-            walker.on 'symbolicLink', (root, stat, next) ->
-              if   root.indexOf('.git') < 0 and stat.name.indexOf('.git') < 0 \
-               and root.indexOf('.hg') < 0 and stat.name.indexOf('.hg') < 0
+            walker.on 'symbolicLink', (root, stat, next) =>
+              if @_walkerFilter(root, stat.name)
                 buildSession.add(path.join(root, stat.name))
               next()
 
             walker.on 'directory', (root, stat, next) =>
-              if   root.indexOf('.git') < 0 and stat.name.indexOf('.git') < 0 \
-               and root.indexOf('.hg') < 0 and stat.name.indexOf('.hg') < 0
+              if @_walkerFilter(root, stat.name)
                 sessionCompletePromise.done => @watchDir("#{root}/#{stat.name}")
               next()
 
