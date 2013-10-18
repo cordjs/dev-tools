@@ -21,7 +21,13 @@ class CompileCoffeeScript extends BuildTask
         bare: true
     .zip(Future.call(mkdirp, path.dirname(dst))).flatMap (jsString) =>
       Future.call(fs.writeFile, dst, jsString)
-    .failAloud()
+    .flatMapFail (err) ->
+      if err instanceof SyntaxError and err.location?
+        console.error "CoffeeScript syntax error: #{err.message}\n" +
+          "#{src}:#{err.location.first_line}:#{err.location.first_column}\n"
+        Future.rejected(new BuildTask.ExpectedError(err))
+      else
+        Future.rejected(err)
     .link(@readyPromise)
 
 

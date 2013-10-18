@@ -52,7 +52,10 @@ class BuildSession
       @_handleFile(file, 'cord/core').link(@_pathUtilsPromise)
     else
       @_appConfPromise.andThen =>
-        @_handleFile(file, fileInfo.detectBundle(file)).link(@_completePromise)
+        @_handleFile(file, fileInfo.detectBundle(file)).mapFail ->
+          console.error "Build task failed for\n#{file}"
+          null
+        .link(@_completePromise)
       .link(@_completePromise)
 
 

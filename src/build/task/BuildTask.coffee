@@ -3,11 +3,22 @@ mkdirp = require('mkdirp')
 
 Future = require('../../utils/Future')
 
+class ExpectedError extends Error
+
+  name: 'ExpectedError'
+
+  constructor: (@underlyingError) ->
+    @underlyingError = underlyingError
+    super(@underlyingError.message, @underlyingError.id)
+
+
 class BuildTask
   ###
   Base class for all build tasks.
   @abstract
   ###
+
+  @ExpectedError: ExpectedError
 
   # this promise must
   readyPromise: null

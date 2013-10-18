@@ -59,6 +59,10 @@ process.on 'message', (task) ->
       type: 'completed'
       task: task.id
   .fail (err) ->
+    if err.constructor.name != 'ExpectedError'
+      console.error err.stack, err
+    else
+      err = err.underlyingError
     process.send
       type: 'failed'
       task: task.id

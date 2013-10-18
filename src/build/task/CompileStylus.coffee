@@ -35,7 +35,7 @@ class CompileStylus extends BuildTask
     src = "#{ @params.baseDir }/#{ @params.file }"
     dst = "#{ @params.targetDir }/#{ dirname }/#{ basename }.css"
 
-    f = Future.call(fs.readFile, src, 'utf8').flatMap (stylusStr) =>
+    Future.call(fs.readFile, src, 'utf8').flatMap (stylusStr) =>
       pu = pathUtils(@params.baseDir)
       preprocessedStr = stylusStr.replace replaceImportRe, (match, p1) ->
         "@import '#{ pu.convertCssPath(p1, src) }'"
@@ -52,9 +52,13 @@ class CompileStylus extends BuildTask
       Future.call([styl, 'render'])
     .zip(Future.call(mkdirp, path.dirname(dst))).flatMap (cssStr) ->
       Future.call(fs.writeFile, dst, cssStr)
-    .failAloud()
-
-    @readyPromise.when(f)
+    .flatMapFail (err) ->
+      if err.constructor.name == 'ParseError'
+        console.error "Stylus ParseError:\n#{err.message}"
+        Future.rejected(new BuildTask.ExpectedError(err))
+      else
+        Future.rejected(err)
+    .link(@readyPromise)
 
 
 

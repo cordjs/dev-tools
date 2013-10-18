@@ -43,12 +43,23 @@ class BuildWorkerManager
       switch m.type
         when 'completed'
           @_tasks[m.task].resolve()
-          delete @_tasks[m.task]
-          @_taskCounter--
-          if @_taskCounter == 0 and not @_stopped
-            @_killTimeout = setTimeout =>
-              @stop() if @_taskCounter == 0
-            , BuildWorkerManager.IDLE_STOP_TIMEOUT
+        when 'failed'
+          @_tasks[m.task].reject(m.error)
+      delete @_tasks[m.task]
+      @_taskCounter--
+      if @_taskCounter == 0 and not @_stopped
+        @_killTimeout = setTimeout =>
+          @stop() if @_taskCounter == 0
+        , BuildWorkerManager.IDLE_STOP_TIMEOUT
+
+    @_process.on 'exit', (code, signal) ->
+      console.log "Process 'exit' with params", code, signal
+
+    @_process.on 'error', (err) ->
+      console.log "Process 'error'", err
+
+    @_process.on 'close', (code, signal) ->
+      console.log "Process 'close' with params", code, signal
 
 
   addTask: (taskParams) ->
@@ -65,7 +76,7 @@ class BuildWorkerManager
       clearTimeout(@_killTimeout) if @_killTimeout
       taskWorkload = @getTaskWorkload(taskParams)
       @_workload += taskWorkload
-      @_tasks[taskParams.id].done =>
+      @_tasks[taskParams.id].always =>
         @_workload -= taskWorkload
     else
       throw new Error("Can't accept task now!")
