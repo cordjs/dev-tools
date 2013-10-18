@@ -71,6 +71,25 @@ defineFuture = (_) ->
       @_alwaysCallbacks = []
       @_name = name
 
+      if @_name
+        if global.config?.debug.core
+          setTimeout =>
+            _console.warn 'Future uncompleted', @_name if @state() == 'pending' and @_counter > 0
+          , 10 * 1000
+
+
+    clearDoneCallbacks: ->
+      @_doneCallbacks = []
+
+
+    clearFailCallbacks: ->
+      @_failCallbacks = []
+
+
+    clearAllCallbacks: ->
+      @_doneCallbacks = []
+      @_failCallbacks = []
+
 
     fork: ->
       ###
@@ -97,6 +116,8 @@ defineFuture = (_) ->
         if @_state != 'rejected'
           @_callbackArgs = [args] if args.length > 0
           if @_counter == 0
+            # For the cases when there is no done function
+            @_state = 'resolved' if @_locked
             @_runDoneCallbacks() if @_doneCallbacks.length > 0
             @_runAlwaysCallbacks() if @_alwaysCallbacks.length > 0
           # not changing state to 'resolved' here because it is possible to call fork() again if done hasn't called yet
@@ -172,7 +193,7 @@ defineFuture = (_) ->
       ###
       Defines callback function to be called when future is resolved.
       If all waiting values are already resolved then callback is fired immedialtely.
-      If fail method is called several times than all passed functions will be called.
+      If done method is called several times than all passed functions will be called.
       ###
       @_doneCallbacks.push(callback)
       @_runDoneCallbacks() if @_counter == 0 and @_state != 'rejected'
@@ -183,7 +204,7 @@ defineFuture = (_) ->
       ###
       Defines callback function to be called when future is rejected.
       If all waiting values are already resolved then callback is fired immedialtely.
-      If done method is called several times than all passed functions will be called.
+      If fail method is called several times than all passed functions will be called.
       ###
       throw new Error("Invalid argument for Future.fail(): #{ callback }") if not _.isFunction(callback)
       @_failCallbacks.push(callback)
@@ -268,11 +289,14 @@ defineFuture = (_) ->
       ###
       result = Future.single()
       @done (args...) ->
-        mapRes = callback.apply(null, args)
-        if _.isArray(mapRes)
-          result.resolve.apply(result, mapRes)
-        else
-          result.resolve(mapRes)
+        try
+          mapRes = callback.apply(null, args)
+          if _.isArray(mapRes)
+            result.resolve.apply(result, mapRes)
+          else
+            result.resolve(mapRes)
+        catch err
+          result.reject(err)
       @fail (err) -> result.reject(err)
       result
 
@@ -287,8 +311,12 @@ defineFuture = (_) ->
       @return Future(A)
       ###
       result = Future.single()
-      @done (args...) -> result.when(callback.apply(null, args))
-      @fail (err)     -> result.reject(err)
+      @done (args...) ->
+        try
+          result.when(callback.apply(null, args))
+        catch err
+          result.reject(err)
+      @fail (err) -> result.reject(err)
       result
 
 
@@ -459,7 +487,7 @@ defineFuture = (_) ->
 
     # syntax-sugar constructors
 
-    @single: (name = '')->
+    @single: (name = '') ->
       ###
       Returns the future, which can not be forked and must be resolved by only single call of resolve().
       @return Future
@@ -508,10 +536,13 @@ defineFuture = (_) ->
       result = @single()
       args.push (callbackArgs...) ->
         result.complete.apply(result, callbackArgs)
-      if _.isArray(fn)
-        fn[0][fn[1]].apply(fn[0], args)
-      else
-        fn.apply(null, args)
+      try
+        if _.isArray(fn)
+          fn[0][fn[1]].apply(fn[0], args)
+        else
+          fn.apply(null, args)
+      catch err
+        result.reject(err)
       result
 
 
