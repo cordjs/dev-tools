@@ -3,6 +3,7 @@ _ = require 'underscore'
 rmrf = require './utils/rmrf'
 
 cliParser            = require './cli-parser'
+Optimizer            = require './optimizer/Optimizer'
 ProjectBuilder       = require './build/ProjectBuilder'
 ServerProcessManager = require './server/ServerProcessManager'
 
@@ -33,6 +34,11 @@ exports.main = ->
       builder.on 'complete', ->
         console.log "build complete. restarting..."
         serverProcessManager.restart()
+
+
+    optimize: (options) ->
+      optimizer = new Optimizer
+      optimizer.run()
 
 
     clean: (options) ->

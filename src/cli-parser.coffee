@@ -54,4 +54,11 @@ exports.run = (actionCallbacks) ->
                                   DEFAULT_OUTPUT_DIR + '"', DEFAULT_OUTPUT_DIR)
     .action(actionCallbacks.clean)
 
+  program
+    .command('optimize')
+    .description('optimize the build (group, merge, minify etc...))')
+    .option('-o, --out <dir>', 'output (target) directory relative to project root. defaults to "' +
+                                  DEFAULT_OUTPUT_DIR + '"', DEFAULT_OUTPUT_DIR)
+    .action(actionCallbacks.optimize)
+
   program.parse(process.argv)
