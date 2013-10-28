@@ -3,9 +3,9 @@
   "keywords":   ["cordjs", "framework"],
   "version":    "0.2.0",
   "directories": {
-    "lib":    "./lib/cordjs"
+    "lib":    "./lib"
   },
-  "main":     "./lib/cordjs/cordjs",
+  "main":     "./lib/main",
   "bin": {
     "cordjs": "./bin/cordjs"
   },
@@ -27,7 +27,7 @@
     "mkdirp":           ">=0.3.5"
   },
   "engines": {
-    "node":   ">=0.8.0"
+    "node":   ">=0.10.19"
   },
   "repository": {
     "type":   "git",
