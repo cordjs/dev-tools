@@ -21,13 +21,13 @@
     "requirejs":        "=2.1.8",
     "underscore":       "=1.4.3",
     "walk":             "2.x",
-    "stylus":           ">=0.37.0",
+    "stylus":           ">=0.38.0",
     "moment":           ">=1.7.2",
     "nib":              ">=1.0.1",
     "mkdirp":           ">=0.3.5"
   },
   "engines": {
-    "node":   ">=0.10.19"
+    "node":   ">=0.10.21"
   },
   "repository": {
     "type":   "git",
