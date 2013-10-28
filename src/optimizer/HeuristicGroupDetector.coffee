@@ -50,9 +50,6 @@ class HeuristicGroupDetector
       else
         break
 
-    for group in resultGroups
-      console.log group.id, group.getModules()
-
     optimizedStat = {}
     for page, moduleList of stat
       modules = _.clone(moduleList)
