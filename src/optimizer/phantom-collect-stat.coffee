@@ -1,7 +1,7 @@
 page = require('webpage').create()
 
 
-page.open 'http://127.0.0.1:1337/tasks/my/', ->
+page.open 'http://127.0.0.1:18180/tasks/my/', ->
   page.addCookie
     name: 'accessToken'
     value: 'af4b4dfedd0ae9cd60fabc5eb4bd34f2b8bfbe9a'

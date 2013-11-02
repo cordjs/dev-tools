@@ -4,7 +4,7 @@ packageInfo = require '../package.json'
 # default values
 DEFAULT_OUTPUT_DIR = 'target'
 DEFAULT_CONFIG_NAME = 'default'
-DEFAULT_SERVER_PORT = 1337
+DEFAULT_SERVER_PORT = 18180
 
 # getting version from the npm package definition
 program
