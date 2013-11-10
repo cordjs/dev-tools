@@ -18,7 +18,8 @@ exports.main = ->
       Builds whole project.
       ###
       console.log "Building project with options", options
-      builder  = new ProjectBuilder(normalizeBuildOptions(options))
+      handleChdir(options)
+      builder = new ProjectBuilder(normalizeBuildOptions(options))
       builder.build()
 
 
@@ -26,6 +27,7 @@ exports.main = ->
       ###
       Builds project and starts cordjs server
       ###
+      handleChdir(options)
       buildOptions = normalizeBuildOptions(options)
       builder = new ProjectBuilder(buildOptions)
       builder.build()
@@ -37,22 +39,26 @@ exports.main = ->
 
 
     optimize: (options) ->
-      optimizer = new Optimizer
+      handleChdir(options)
+      optimizer = new Optimizer(targetDir: "#{ process.cwd() }/#{ options.out }")
       optimizer.run()
 
 
     clean: (options) ->
       console.log "Cleaning project..."
+      handleChdir(options)
       rmrf(normalizeBuildOptions(options).targetDir)
 
 
+handleChdir = (options) ->
+  process.chdir(options.parent.chdir) if options.parent.chdir
+
 
 normalizeBuildOptions = (options) ->
-  process.chdir(options.parent.chdir) if options.parent.chdir
   curDir = process.cwd()
 
   baseDir: curDir
-  targetDir: "#{curDir}/#{options.out}"
+  targetDir: "#{curDir}/#{ if options.out then options.out else 'target'}"
   watch: !!options.watch
   debug: !!options.debug
 
