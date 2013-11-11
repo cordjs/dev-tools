@@ -55,7 +55,7 @@ class CorrelationGroupDetector
     result = {}
     for page, moduleList of stat
       for module in moduleList
-        if module.indexOf('/bundles/cord/core/browserInit.js') == -1
+        if module.indexOf('/bundles/cord/core/init/browser-init.js') == -1
           result[module] ?= []
           result[module].push(page)
     result

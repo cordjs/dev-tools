@@ -65,7 +65,7 @@ class HeuristicGroupDetector
 
   _findBestGroup: (moduleList) ->
     groups = []
-    console.log "findBestGroup --> ", moduleList.length, (new Date).getTime()
+#    console.log "findBestGroup --> ", moduleList.length, (new Date).getTime()
     @_maxGroupScore = 0
     @_thresholdTime = (new Date).getTime() + 120000
     for item, i in moduleList
@@ -117,7 +117,7 @@ class HeuristicGroupDetector
             result.push([cnt, score, group])
             @_maxGroupScore = score
             @_thresholdTime = (new Date).getTime() + 30000 # moving threshold ahead
-            console.log "maxScore = ", score, group.length, (new Date).getTime()
+#            console.log "maxScore = ", score, group.length, (new Date).getTime()
           result = result.concat(@_collectGroups(group, list, i + 1, matchPages, level + 1))
     result
 
@@ -142,7 +142,7 @@ class HeuristicGroupDetector
     result = {}
     for page, moduleList of stat
       for module in moduleList
-        if module.indexOf('/bundles/cord/core/browserInit.js') == -1
+        if module.indexOf('/bundles/cord/core/init/browser-init.js') == -1
           result[module] ?= []
           result[module].push(page)
     result
