@@ -96,7 +96,9 @@ class Optimizer
       console.log "Generating browser-init script..."
       browserInitGenerator.generate(mergedMap, @params)
     .flatMap (browserInitScriptString) =>
-      Future.call(fs.writeFile, "#{@_zDir}/browser-init.js", browserInitScriptString)
+      fileName = sha1(browserInitScriptString)
+      Future.call(fs.writeFile, "#{@_zDir}/#{fileName}.js", browserInitScriptString)
+        .zip(Future.call(fs.writeFile, "#{@_zDir}/browser-init.id", fileName))
 
 
   _mergeGroups: (groupMap, requireConf) ->
