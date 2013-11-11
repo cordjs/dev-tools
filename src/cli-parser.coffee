@@ -15,7 +15,7 @@ program
 
 # common options
 program
-  .option('-C, --chdir <path>', 'change the working directory')
+  .option('--chdir <path>', 'change the working directory')
 
 
 program.withBuildOptions = (commandName) ->
@@ -59,6 +59,7 @@ exports.run = (actionCallbacks) ->
     .description('optimize the build (group, merge, minify etc...))')
     .option('-o, --out <dir>', 'output (target) directory relative to project root. defaults to "' +
                                   DEFAULT_OUTPUT_DIR + '"', DEFAULT_OUTPUT_DIR)
+    .option('-C, --clean', 'clean existing optimized files before writing new ones')
     .action(actionCallbacks.optimize)
 
   program.parse(process.argv)

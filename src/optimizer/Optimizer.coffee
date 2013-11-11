@@ -5,6 +5,7 @@ mkdirp   = require 'mkdirp'
 UglifyJS = require 'uglify-js'
 
 Future = require '../utils/Future'
+rmrf   = require '../utils/rmrf'
 sha1   = require '../utils/sha1'
 
 ByWidgetGroupDetector    = require './ByWidgetGroupDetector'
@@ -34,6 +35,7 @@ class Optimizer
 
   _zDir: null
   _requireConfig: null
+  _cleanFuture: null
 
 
   constructor: (@params) ->
@@ -111,6 +113,8 @@ class Optimizer
     ###
     result = new Future(1)
     resultMap = {}
+    @_cleanFuture = (if @params.clean then rmrf(@_zDir) else Future.resolved()).flatMap =>
+      Future.call(mkdirp, @_zDir)
     for groupId, modules of groupMap
       do (modules) =>
         result.fork()
@@ -167,7 +171,7 @@ class Optimizer
           # ignoring absent files (it may be caused by the obsolete stat-file)
           false
 
-    Future.call(mkdirp, @_zDir).zip(Future.sequence(futures)).flatMap =>
+    Future.sequence(futures).zip(@_cleanFuture).flatMap =>
       resultCode = ''
 
       # adding one instance of coffee-script utility functions cutted above
@@ -178,7 +182,7 @@ class Optimizer
       mergedContent = resultCode + contentArr.join("\n\n")
 #      mergedContent = UglifyJS.minify(mergedContent, fromString: true).code
       fileName = sha1(mergedContent)
-      console.log "Saving #{fileName}..."
+      console.log "Saving #{fileName} ..."
       Future.call(fs.writeFile, "#{@_zDir}/#{ fileName }.js", mergedContent).map ->
         fileName
     .failAloud()

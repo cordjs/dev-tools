@@ -40,7 +40,9 @@ exports.main = ->
 
     optimize: (options) ->
       handleChdir(options)
-      optimizer = new Optimizer(targetDir: "#{ process.cwd() }/#{ options.out }")
+      optimizer = new Optimizer
+        targetDir: "#{ process.cwd() }/#{ options.out }"
+        clean: options.clean
       optimizer.run()
 
 
