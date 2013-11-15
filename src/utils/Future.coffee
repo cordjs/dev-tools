@@ -144,7 +144,8 @@ defineFuture = (_) ->
           @_runFailCallbacks() if @_failCallbacks.length > 0
           @_runAlwaysCallbacks() if @_alwaysCallbacks.length > 0
       else
-        throw new Error("Future::reject is called more times than Future::fork!")
+        nameStr = if @_name then " (name = #{ @_name})" else ''
+        throw new Error("Future::reject is called more times than Future::fork!#{ nameStr }")
 
       this
 
@@ -287,7 +288,7 @@ defineFuture = (_) ->
        array than callback must return an Array with single item containing the resulting Array (Array in Array).
       If this Future is rejected than the resulting Future will contain the same error.
       ###
-      result = Future.single()
+      result = Future.single('Future::map')
       @done (args...) ->
         try
           mapRes = callback.apply(null, args)
@@ -296,7 +297,11 @@ defineFuture = (_) ->
           else
             result.resolve(mapRes)
         catch err
-          result.reject(err)
+          if result.completed()
+            throw err
+          else
+            #console.error "Error in Future.map", err, err.stack
+            result.reject(err)
       @fail (err) -> result.reject(err)
       result
 
@@ -310,12 +315,16 @@ defineFuture = (_) ->
       @param Function(this.result -> Future(A)) callback
       @return Future(A)
       ###
-      result = Future.single()
+      result = Future.single('Future::flatMap')
       @done (args...) ->
         try
           result.when(callback.apply(null, args))
         catch err
-          result.reject(err)
+          if result.completed()
+            throw err
+          else
+            #console.error "Error in Future.flatMap", err, err.stack
+            result.reject(err)
       @fail (err) -> result.reject(err)
       result
 
@@ -329,7 +338,7 @@ defineFuture = (_) ->
       @param Function(err, results...) callback
       @return Future(this.result)
       ###
-      result = Future.single()
+      result = Future.single('Future::andThen')
       @always (args...) ->
         callback.apply(null, args)
         result.complete.apply(result, args)
@@ -344,7 +353,7 @@ defineFuture = (_) ->
       @param Function(err -> A) callback
       @return Future[A]
       ###
-      result = Future.single()
+      result = Future.single('Future::mapFail')
       @done (args...) -> result.resolve.apply(result, args)
       @fail (err) ->
         mapRes = callback.call(null, err)
@@ -364,7 +373,7 @@ defineFuture = (_) ->
       @param Function(err -> Future(A)) callback
       @return Future[A]
       ###
-      result = Future.single()
+      result = Future.single('Future::flatMapFail')
       @done (args...) -> result.resolve.apply(result, args)
       @fail (err)     -> result.when(callback.call(null, err))
       result
@@ -384,7 +393,7 @@ defineFuture = (_) ->
       ###
       Converts Array[Future[X]] to Future[Array[X]]
       ###
-      promise = new Future
+      promise = new Future('Future::sequence')
       result = []
       for f, i in futureList
         do (i) ->
