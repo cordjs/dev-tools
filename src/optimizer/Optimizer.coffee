@@ -49,8 +49,9 @@ class Optimizer
       @_requireConfig = requirejsConfig.collect(@params.targetDir)
       stat = if err then {} else JSON.parse(data)
       console.log "Calculating group optimization..."
-      groupMap = @_generateOptimizationMap(stat)
-      @_generateOptimizedFiles(groupMap).done ->
+      @_generateOptimizationMap(stat).flatMap (groupMap) =>
+        @_generateOptimizedFiles(groupMap)
+      .done ->
         diff = process.hrtime(start)
         console.log "Optimization complete in #{ (diff[0] * 1e9 + diff[1]) / 1e6 } ms"
 
@@ -64,25 +65,26 @@ class Optimizer
     iterations = 1
     groupRepo = new GroupRepo
 
-    widgetDetector = new ByWidgetGroupDetector(groupRepo)
-    stat = widgetDetector.process(stat)
+    widgetDetector = new ByWidgetGroupDetector(groupRepo, @params.targetDir)
+    widgetDetector.process(stat).map (stat) ->
+      while iterations--
+        console.log "100% correlation group detection..."
+        # grouping by 100% correlation condition
+        corrDetector = new CorrelationGroupDetector(groupRepo)
+        stat = corrDetector.process(stat)
 
-    while iterations--
-      # grouping by 100% correlation condition
-      corrDetector = new CorrelationGroupDetector(groupRepo)
-      stat = corrDetector.process(stat)
+        console.log "Heuristic group detection..."
+        # heuristic optimization of the previous stage result
+        heuristicDetector = new HeuristicGroupDetector(groupRepo)
+        stat = heuristicDetector.process(stat)
 
-      # heuristic optimization of the previous stage result
-      heuristicDetector = new HeuristicGroupDetector(groupRepo)
-      stat = heuristicDetector.process(stat)
+      resultMap = {}
+      for page, groups of stat
+        for groupId in groups
+          group = groupRepo.getGroup(groupId)
+          resultMap[groupId] = _.uniq(group.getModules()) if group
 
-    resultMap = {}
-    for page, groups of stat
-      for groupId in groups
-        group = groupRepo.getGroup(groupId)
-        resultMap[groupId] = _.uniq(group.getModules()) if group
-
-    resultMap
+      resultMap
 
 
   _generateOptimizedFiles: (groupMap) ->

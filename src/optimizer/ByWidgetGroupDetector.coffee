@@ -1,8 +1,11 @@
+fs   = require 'fs'
 path = require 'path'
 
 _ = require  'underscore'
 
-sha1 = require '../utils/sha1'
+Future    = require '../utils/Future'
+sha1      = require '../utils/sha1'
+appConfig = require '../appConfig'
 
 
 class ByWidgetGroupDetector
@@ -10,36 +13,57 @@ class ByWidgetGroupDetector
   Groups all widget's js files together.
   ###
 
-  constructor: (@groupRepo) ->
+  _widgetGroups: null
+
+  constructor: (@groupRepo, @targetDir) ->
+    @_widgetGroups = {}
     # nothing
 
 
+  _processDir: (target) ->
+    ###
+    Recursively scans the given directory to group widgets files together.
+    @param String target absolute path to the file/directory to be removed
+    @return Future
+    ###
+    Future.call(fs.stat, target).flatMap (stat) =>
+      if stat.isDirectory()
+        @_widgetGroups[target.substr(target.indexOf('/bundles/') + 1)] = []
+        Future.call(fs.readdir, target).flatMap (items) =>
+          futures = (@_processDir(path.join(target, item)) for item in items)
+          Future.sequence(futures)
+      else if path.extname(target) == '.js'
+        moduleName = target.slice(target.indexOf('/bundles/') + 1, -3)
+        key = path.dirname(moduleName)
+        @_widgetGroups[key].push(moduleName)
+        Future.resolved()
+      else
+        Future.resolved()
+
+
   process: (stat) ->
-    widgetGroups = {}
-    widgetsRe = /^bundles\/.+\/widgets\//
-    for page, modules of stat
-      for module in modules
-        if widgetsRe.test(module)
-          key = path.dirname(module)
-          widgetGroups[key] ?= []
-          widgetGroups[key].push(module) if widgetGroups[key].indexOf(module) == -1
+    appConfig.getBundles(@targetDir).flatMap (bundles) =>
+      futures = for bundle in bundles
+        @_processDir(path.join(@targetDir, 'public/bundles', bundle, 'widgets'))
+      Future.sequence(futures)
+    .map =>
+      resultGroups = []
+      for gr, items of @_widgetGroups
+        if items.length > 1
+          resultGroups.push(@groupRepo.createGroup(@_generateGroupId(items, gr), items))
 
-    resultGroups = []
-    for gr, items of widgetGroups
-      if items.length > 1
-        resultGroups.push(@groupRepo.createGroup(@_generateGroupId(items, gr), items))
+      optimizedStat = {}
+      for page, moduleList of stat
+        modules = _.clone(moduleList)
+        for group in resultGroups
+          lengthBefore = modules.length
+          modules = _.difference(modules, group.getItems())
+          if lengthBefore > modules.length
+            modules.push(group.id)
+        optimizedStat[page] = modules
 
-    optimizedStat = {}
-    for page, moduleList of stat
-      modules = _.clone(moduleList)
-      for group in resultGroups
-        lengthBefore = modules.length
-        modules = _.difference(modules, group.getItems())
-        if lengthBefore > modules.length
-          modules.push(group.id)
-      optimizedStat[page] = modules
-
-    optimizedStat
+      optimizedStat
+    .failAloud()
 
 
   _generateGroupId: (items, groupDir) ->
