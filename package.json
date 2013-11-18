@@ -1,7 +1,7 @@
 {
   "name":       "cordjs",
   "keywords":   ["cordjs", "framework"],
-  "version":    "0.2.1",
+  "version":    "0.2.2",
   "directories": {
     "lib":    "./lib"
   },
@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "amdefine":         "=0.0.8",
+    "clean-css":        "=2.0.1",
     "coffee-script":    ">=1.6.3",
     "colors":           "=0.6.0",
     "commander":        ">=2.0.0",
@@ -23,7 +24,7 @@
     "nib":              ">=1.0.1",
     "postal":           "=0.7.3",
     "requirejs":        "=2.1.8",
-    "stylus":           ">=0.38.0",
+    "stylus":           ">=0.40.3",
     "uglify-js":        ">=2.4.1",
     "underscore":       "=1.4.3",
     "walk":             "2.x"

@@ -11,6 +11,7 @@ sha1   = require '../utils/sha1'
 ByWidgetGroupDetector    = require './ByWidgetGroupDetector'
 browserInitGenerator     = require './browserInitGenerator'
 CorrelationGroupDetector = require './CorrelationGroupDetector'
+CssOptimizer             = require './CssOptimizer'
 GroupRepo                = require './GroupRepo'
 HeuristicGroupDetector   = require './HeuristicGroupDetector'
 requirejsConfig          = require './requirejsConfig'
@@ -55,6 +56,9 @@ class Optimizer
         diff = process.hrtime(start)
         console.log "Optimization complete in #{ (diff[0] * 1e9 + diff[1]) / 1e6 } ms"
 
+    cssOptimizer = new CssOptimizer(@params)
+    cssOptimizer.run()
+
 
   _generateOptimizationMap: (stat) ->
     ###
@@ -69,7 +73,6 @@ class Optimizer
     widgetDetector.process(stat).map (stat) ->
       while iterations--
         console.log "100% correlation group detection..."
-        # grouping by 100% correlation condition
         corrDetector = new CorrelationGroupDetector(groupRepo)
         stat = corrDetector.process(stat)
 
