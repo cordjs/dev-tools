@@ -8,7 +8,7 @@ requirejsConfig = require './requirejsConfig'
 
 templateFile   = 'public/bundles/cord/core/init/browser-init.opt.tmpl.js'
 
-exports.generate = (groupMap, params) ->
+exports.generate = (params, jsGroupMap, cssGroupMap) ->
   ###
   Generates optimized browser-init script based on template with precomputed requirejs configuration including
    group optimization map.
@@ -22,7 +22,8 @@ exports.generate = (groupMap, params) ->
     .map (requireConf, tmplString) ->
       tmplString
         .replace('COMPUTED_REQUIREJS_CONFIG', JSON.stringify(requireConf, null, 2))
-        .replace('GROUP_MAP', JSON.stringify(groupMap, null, 2))
+        .replace('JS_GROUP_MAP', JSON.stringify(jsGroupMap, null, 2))
+        .replace('CSS_GROUP_MAP', JSON.stringify(cssGroupMap, null, 2))
     .failAloud()
   catch e
     console.error "Error in browser-init generator:", e

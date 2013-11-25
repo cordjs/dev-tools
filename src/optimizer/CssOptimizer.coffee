@@ -3,7 +3,6 @@ path = require 'path'
 
 _        = require 'underscore'
 CleanCss = require 'clean-css'
-mkdirp   = require 'mkdirp'
 
 Future = require '../utils/Future'
 sha1   = require '../utils/sha1'
@@ -25,37 +24,35 @@ class CssOptimizer
   ###
 
   _zDir: null
-  _cleanFuture: null
   _globalOrder: null
 
 
-  constructor: (@params) ->
+  constructor: (@params, @zDirFuture) ->
     @_zDir = "#{@params.targetDir}/public/assets/z"
 
 
   run: ->
-    start = process.hrtime()
-
     cssStatFile = 'css-stat.json'
-    fs.readFile cssStatFile, (err, data) =>
-      stat = if err then {} else JSON.parse(data)
+    Future.call(fs.readFile, cssStatFile).flatMap (data) =>
+      stat = JSON.parse(data)
       @_calculateGlobalOrder(stat)
       console.log "Calculating css group optimization..."
       groupMap = @_generateOptimizationMap(stat)
-      @_generateOptimizedFiles(groupMap).done ->
-        diff = process.hrtime(start)
-        console.log "Optimization complete in #{ (diff[0] * 1e9 + diff[1]) / 1e6 } ms"
+      @_generateOptimizedFiles(groupMap)
+    .mapFail (e) ->
+      console.warn "CSS group optimization failed! Reason: #{ e }. Skipping..."
+      {}
 
 
   _generateOptimizationMap: (stat) ->
     iterations = 1
     groupRepo = new GroupRepo
     while iterations--
-      console.log "100% correlation group detection..."
+      console.log "100% correlation CSS group detection..."
       corrDetector = new CorrelationGroupDetector(groupRepo)
       stat = corrDetector.process(stat)
 
-      console.log "Heuristic group detection..."
+      console.log "Heuristic CSS group detection..."
       # heuristic optimization of the previous stage result
       heuristicDetector = new HeuristicGroupDetector(groupRepo)
       stat = heuristicDetector.process(stat)
@@ -75,15 +72,16 @@ class CssOptimizer
     @param Map[String -> Array[String]] groupMap optimized group map
     @return Future
     ###
-    console.log "Merging group files..."
-    @_mergeGroups(groupMap)
-#    .flatMap (mergedMap) =>
-#      console.log "Generating browser-init script..."
-#      browserInitGenerator.generate(mergedMap, @params)
-#    .flatMap (browserInitScriptString) =>
-#      fileName = sha1(browserInitScriptString)
-#      Future.call(fs.writeFile, "#{@_zDir}/#{fileName}.js", browserInitScriptString)
-#        .zip(Future.call(fs.writeFile, "#{@_zDir}/browser-init.id", fileName))
+    console.log "Merging CSS group files..."
+    @_mergeGroups(groupMap).flatMap (mergedGroupMap) =>
+      cssToGroup = {}
+      for groupId, urls of mergedGroupMap
+        for css in urls
+          cssToGroup[css] = groupId
+      fileName = "#{@params.targetDir}/conf/css-to-group-generated.js"
+#      Future.call(fs.writeFile, fileName, "define(function(){ return {}; });").map -> {}
+      Future.call(fs.writeFile, fileName, "define(function(){ return #{ JSON.stringify(cssToGroup, null, 2) }; });").map ->
+        mergedGroupMap
 
 
   _mergeGroups: (groupMap) ->
@@ -96,9 +94,6 @@ class CssOptimizer
     ###
     result = new Future(1)
     resultMap = {}
-#    @_cleanFuture = (if @params.clean then rmrf(@_zDir) else Future.resolved()).flatMap =>
-    @_cleanFuture = Future.resolved().flatMap =>
-      Future.call(mkdirp, @_zDir)
     for groupId, cssFiles of groupMap
       do (cssFiles) =>
         result.fork()
@@ -134,7 +129,7 @@ class CssOptimizer
           # ignoring absent files (it may be caused by the obsolete stat-file)
           false
 
-    Future.sequence(futures).zip(@_cleanFuture).flatMap =>
+    Future.sequence(futures).zip(@zDirFuture).flatMap =>
       mergedContent = contentArr.join("\n\n")
       mergedContent = cleanCss.minify(mergedContent)
       fileName = sha1(mergedContent)
@@ -185,7 +180,6 @@ class CssOptimizer
         s++
       # if there was no such files than taking the first random file with the least number of prepends
       ready = [ready[0]] if s > 1
-#      ready = [prepends[ready[0]].files[0]] if s > 1
       result = result.concat(ready)
       # removing found file from the base struct and from the prepends of the other files
       delete prepends[k] for k in ready
