@@ -43,6 +43,7 @@ exports.main = ->
       optimizer = new Optimizer
         targetDir: "#{ process.cwd() }/#{ options.out }"
         clean: options.clean
+        css: not options.disableCss
       optimizer.run()
 
 

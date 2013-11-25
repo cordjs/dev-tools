@@ -79,7 +79,6 @@ class CssOptimizer
         for css in urls
           cssToGroup[css] = groupId
       fileName = "#{@params.targetDir}/conf/css-to-group-generated.js"
-#      Future.call(fs.writeFile, fileName, "define(function(){ return {}; });").map -> {}
       Future.call(fs.writeFile, fileName, "define(function(){ return #{ JSON.stringify(cssToGroup, null, 2) }; });").map ->
         mergedGroupMap
 

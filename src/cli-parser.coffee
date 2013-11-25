@@ -60,6 +60,7 @@ exports.run = (actionCallbacks) ->
     .option('-o, --out <dir>', 'output (target) directory relative to project root. defaults to "' +
                                   DEFAULT_OUTPUT_DIR + '"', DEFAULT_OUTPUT_DIR)
     .option('-C, --clean', 'clean existing optimized files before writing new ones')
+    .option('--disable-css', 'do not perform CSS group optimization. By default CSS optimization is enabled.')
     .action(actionCallbacks.optimize)
 
   program.parse(process.argv)

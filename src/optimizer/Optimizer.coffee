@@ -37,14 +37,21 @@ class Optimizer
       Future.call(mkdirp, @_zDir)
 
     jsOptimizer  = new JsOptimizer(@params, zDirFuture)
-    cssOptimizer = new CssOptimizer(@params, zDirFuture)
-    jsOptimizer.run().zip(cssOptimizer.run()).flatMap (jsGroupMap, cssGroupMap) =>
+    cssOptimizerFuture =
+      if @params.css
+        (new CssOptimizer(@params, zDirFuture)).run()
+      else
+        Future.call(fs.unlink, "#{@params.targetDir}/conf/css-to-group-generated.js").map ->
+          {}
+        .mapFail -> {}
+    jsOptimizer.run().zip(cssOptimizerFuture).flatMap (jsGroupMap, cssGroupMap) =>
       console.log "Generating browser-init script..."
       browserInitGenerator.generate(@params, jsGroupMap, cssGroupMap)
     .flatMap (browserInitScriptString) =>
       fileName = sha1(browserInitScriptString)
       Future.call(fs.writeFile, "#{@_zDir}/#{fileName}.js", browserInitScriptString)
         .zip(Future.call(fs.writeFile, "#{@_zDir}/browser-init.id", fileName))
+    .failAloud()
     .done ->
       diff = process.hrtime(start)
       console.log "Optimization complete in #{ (diff[0] * 1e9 + diff[1]) / 1e6 } ms"
