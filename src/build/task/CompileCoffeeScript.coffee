@@ -23,9 +23,9 @@ class CompileCoffeeScript extends BuildTask
         compile: true
         bare: true
       inf = @params.info
-      if inf.isWidget or inf.isBehaviour
+      if inf.isWidget or inf.isBehaviour or inf.isModelRepo
         name = inf.fileNameWithoutExt
-        js = js.replace("return #{name};\n", "#{name}.CLASS_NAME = '#{name}';\n\n   return #{name};\n")
+        js = js.replace("return #{name};\n", "#{name}.__name = '#{name}';\n\n   return #{name};\n")
       js
     .zip(Future.call(mkdirp, path.dirname(dst))).flatMap (jsString) =>
       Future.call(fs.writeFile, dst, jsString)

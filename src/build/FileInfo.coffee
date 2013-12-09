@@ -102,6 +102,8 @@ class FileInfo
               isBehaviour = (lastDirName + 'Behaviour') == lowerName
             else if ext == '.html'
               isWidgetTemplate = lastDirName == fileWithoutExt
+          else if inModels
+            isModelRepo = ext == '.coffee' and fileWithoutExt.substr(-4) == 'Repo'
       else
         bundle = null
 
@@ -118,6 +120,7 @@ class FileInfo
     isWidget: isWidget ? false
     isBehaviour: isBehaviour ? false
     isWidgetTemplate: isWidgetTemplate ? false
+    isModelRepo: isModelRepo ? false
     isCoffee: ext == '.coffee'
     isHtml: ext == '.html'
     isStylus: ext == '.styl'

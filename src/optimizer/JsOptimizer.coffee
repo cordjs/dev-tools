@@ -173,7 +173,7 @@ class JsOptimizer
       mergedContent = resultCode + contentArr.join("\n\n")
       mergedContent = UglifyJS.minify mergedContent,
         fromString: true
-        mangle: false
+        mangle: true
       .code
       fileName = sha1(mergedContent)
       console.log "Saving #{fileName}.js ..."

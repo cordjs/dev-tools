@@ -17,7 +17,6 @@ exports.main = ->
       ###
       Builds whole project.
       ###
-      console.log "Building project with options", options
       handleChdir(options)
       builder = new ProjectBuilder(normalizeBuildOptions(options))
       builder.build()
