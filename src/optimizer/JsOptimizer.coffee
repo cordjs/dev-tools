@@ -81,6 +81,11 @@ class JsOptimizer
         for groupId in groups
           group = groupRepo.getGroup(groupId)
           resultMap[groupId] = _.uniq(group.getModules()) if group
+          groupRepo.removeGroupDeep(groupId) if group
+
+      # adding unused widget groups to the result map
+      for groupId, group of groupRepo.getGroups()
+        resultMap[groupId] = _.uniq(group.getModules())
 
       resultMap
 

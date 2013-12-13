@@ -32,6 +32,9 @@ class OptimizerGroup
   getModules: -> @_modules
 
 
+  getSubGroups: -> @_subGroups
+
+
 
 class GroupRepo
   ###
@@ -39,13 +42,32 @@ class GroupRepo
   Creates groups and contains key-value list of OptimizationGroup by their IDs.
   ###
 
-  _groups: {}
+  _groups: null
+
+  constructor: ->
+    @_groups = {}
+
 
   createGroup: (groupId, modules) ->
     @_groups[groupId] = new OptimizerGroup(this, groupId, modules)
 
 
   getGroup: (groupId) -> @_groups[groupId]
+
+
+  removeGroupDeep: (groupId) ->
+    ###
+    Removes the group with the given group id and all it's sub-groups from this group repository.
+    Used to determine remaining unused groups.
+    @param String groupId
+    ###
+    if @_groups[groupId]
+      @removeGroupDeep(subGroup.id) for subGroup in @_groups[groupId].getSubGroups()
+      console.log "! removing #{groupId} ..."
+      delete @_groups[groupId]
+
+
+  getGroups: -> @_groups
 
 
 
