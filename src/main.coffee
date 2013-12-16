@@ -1,6 +1,7 @@
 _ = require 'underscore'
 
-rmrf = require './utils/rmrf'
+Future = require './utils/Future'
+rmrf   = require './utils/rmrf'
 
 cliParser            = require './cli-parser'
 Optimizer            = require './optimizer/Optimizer'
@@ -12,29 +13,30 @@ exports.main = ->
   ###
   Main cordjs CLI tool entry point.
   ###
-  cliParser.run
+  commands =
     build: (options) ->
       ###
       Builds whole project.
       ###
       handleChdir(options)
-      builder = new ProjectBuilder(normalizeBuildOptions(options))
-      builder.build()
+      buildOptions = normalizeBuildOptions(options)
+      cleanFuture = if buildOptions.clean then commands.clean(options) else Future.resolved()
+      cleanFuture.map ->
+        builder = new ProjectBuilder(buildOptions)
+        builder.build()
+        [builder, buildOptions]
 
 
     run: (options) ->
       ###
       Builds project and starts cordjs server
       ###
-      handleChdir(options)
-      buildOptions = normalizeBuildOptions(options)
-      builder = new ProjectBuilder(buildOptions)
-      builder.build()
-      serverOptions = normalizeServerOptions(options)
-      serverProcessManager = new ServerProcessManager(_.extend(buildOptions, serverOptions))
-      builder.on 'complete', ->
-        console.log "build complete. restarting..."
-        serverProcessManager.restart()
+      commands.build(options).failAloud().done (builder, buildOptions) ->
+        serverOptions = normalizeServerOptions(options)
+        serverProcessManager = new ServerProcessManager(_.extend(buildOptions, serverOptions))
+        builder.on 'complete', ->
+          console.log "build complete. restarting..."
+          serverProcessManager.restart()
 
 
     optimize: (options) ->
@@ -53,6 +55,10 @@ exports.main = ->
       rmrf(normalizeBuildOptions(options).targetDir)
 
 
+  cliParser.run(commands)
+
+
+
 handleChdir = (options) ->
   process.chdir(options.parent.chdir) if options.parent.chdir
 
@@ -64,6 +70,7 @@ normalizeBuildOptions = (options) ->
   targetDir: "#{curDir}/#{ if options.out then options.out else 'target'}"
   watch: !!options.watch
   debug: !!options.debug
+  clean: !!options.clean
 
 
 normalizeServerOptions = (options) ->

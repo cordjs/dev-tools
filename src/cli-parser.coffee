@@ -26,6 +26,7 @@ program.withBuildOptions = (commandName) ->
     .option('-o, --out <dir>', 'output (target) directory relative to project root. defaults to "' +
                                   DEFAULT_OUTPUT_DIR + '"', DEFAULT_OUTPUT_DIR)
     .option('-d, --debug', 'development mode - copy all files to the outputDir')
+    .option('-C, --clean', 'clean (remove) existing built files before starting new build')
 
 exports.run = (actionCallbacks) ->
   ###
