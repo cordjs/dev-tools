@@ -176,10 +176,11 @@ class JsOptimizer
         resultCode += 'var ' + (coffeeUtilCode[i] for i in hit).join(',\n  ') + ';\n\n'
 
       mergedContent = resultCode + contentArr.join("\n\n")
-      mergedContent = UglifyJS.minify mergedContent,
-        fromString: true
-        mangle: true
-      .code
+      if @params.jsMinify
+        mergedContent = UglifyJS.minify mergedContent,
+          fromString: true
+          mangle: true
+        .code
       fileName = sha1(mergedContent)
       console.log "Saving #{fileName}.js ..."
       Future.call(fs.writeFile, "#{@_zDir}/#{ fileName }.js", mergedContent).map ->

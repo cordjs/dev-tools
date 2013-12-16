@@ -63,7 +63,6 @@ class GroupRepo
     ###
     if @_groups[groupId]
       @removeGroupDeep(subGroup.id) for subGroup in @_groups[groupId].getSubGroups()
-      console.log "! removing #{groupId} ..."
       delete @_groups[groupId]
 
 

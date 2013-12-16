@@ -58,9 +58,10 @@ exports.run = (actionCallbacks) ->
     .command('optimize')
     .description('optimize the build (group, merge, minify etc...))')
     .option('-o, --out <dir>', 'output (target) directory relative to project root. defaults to "' +
-                                  DEFAULT_OUTPUT_DIR + '"', DEFAULT_OUTPUT_DIR)
+                               DEFAULT_OUTPUT_DIR + '"', DEFAULT_OUTPUT_DIR)
     .option('-C, --clean', 'clean existing optimized files before writing new ones')
     .option('--disable-css', 'do not perform CSS group optimization. By default CSS optimization is enabled.')
+    .option('--disable-js-minify', 'do not minify (via uglify-js) optimized javascript files. By default JS minification is enabled.')
     .action(actionCallbacks.optimize)
 
   program.parse(process.argv)

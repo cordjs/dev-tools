@@ -43,6 +43,7 @@ exports.main = ->
         targetDir: "#{ process.cwd() }/#{ options.out }"
         clean: options.clean
         css: not options.disableCss
+        jsMinify: not options.disableJsMinify
       optimizer.run()
 
 
