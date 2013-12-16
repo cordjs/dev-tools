@@ -1,7 +1,7 @@
 {
   "name":       "cordjs",
   "keywords":   ["cordjs", "framework"],
-  "version":    "0.2.3",
+  "version":    "0.2.4",
   "directories": {
     "lib":    "./lib"
   },
@@ -14,9 +14,14 @@
     "clean-css":        "=2.0.1",
     "coffee-script":    ">=1.6.3",
     "commander":        ">=2.0.0",
+    "dustjs-linkedin":  "=1.1.1",
+    "dustjs-helpers":   "=1.1.0",
     "lodash":           "=2.2.1",
     "mkdirp":           ">=0.3.5",
+    "moment":           ">=1.7.2",
+    "monologue.js":     "=0.1.1",
     "nib":              ">=1.0.1",
+    "postal":           "=0.7.3",
     "requirejs":        "=2.1.8",
     "stylus":           ">=0.40.3",
     "uglify-js":        ">=2.4.1",
