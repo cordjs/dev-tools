@@ -51,6 +51,7 @@ class ProjectBuilder extends EventEmitter
     completePromise = new Future(1)
     corePromise = new Future(1)
     widgetClassesPromise = new Future(1)
+    nonWidgetFilesPromise = new Future(1)
     relativePos = @params.baseDir.length + 1
 
 
@@ -132,6 +133,7 @@ class ProjectBuilder extends EventEmitter
 
     scanBundle = (bundle) =>
       widgetClassesPromise.fork()
+      nonWidgetFilesPromise.fork()
       scanDir "#{ @params.baseDir }/public/bundles/#{ bundle }", (relativeName, stat) =>
         info = fileInfo.getFileInfo(relativeName, bundle)
         completePromise.fork()
@@ -143,9 +145,13 @@ class ProjectBuilder extends EventEmitter
               completePromise.when(task)
               widgetClassesPromise.when(task)
             else if info.isWidgetTemplate
-              widgetClassesPromise.flatMap =>
+              widgetClassesPromise.zip(nonWidgetFilesPromise).flatMap =>
                 buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
               .link(completePromise)
+            else if info.isCoffee and not info.inWidgets
+              buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
+                .link(completePromise)
+                .link(nonWidgetFilesPromise)
             else if info.isStylus
               pathUtilsPromise.flatMap =>
                 buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
@@ -156,6 +162,7 @@ class ProjectBuilder extends EventEmitter
           completePromise.resolve()
       .on 'end', ->
         widgetClassesPromise.resolve()
+        nonWidgetFilesPromise.resolve()
 
 
     appConfFile = 'public/app/application'
@@ -184,6 +191,7 @@ class ProjectBuilder extends EventEmitter
         for bundle in bundles
           scanBundle(bundle)
         widgetClassesPromise.resolve()
+        nonWidgetFilesPromise.resolve()
         completePromise.resolve()
 
     completePromise.done =>
