@@ -23,7 +23,7 @@ class CompileCoffeeScript extends BuildTask
         compile: true
         bare: true
       inf = @params.info
-      if inf.isWidget or inf.isBehaviour or inf.isModelRepo
+      if inf.isWidget or inf.isBehaviour or inf.isModelRepo or inf.isCollection
         name = inf.fileNameWithoutExt
         js = js.replace("return #{name};\n", "#{name}.__name = '#{name}';\n\n   return #{name};\n")
       js

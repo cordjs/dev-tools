@@ -104,6 +104,7 @@ class FileInfo
               isWidgetTemplate = lastDirName == fileWithoutExt
           else if inModels
             isModelRepo = ext == '.coffee' and fileWithoutExt.substr(-4) == 'Repo'
+            isCollection = ext == '.coffee' and fileWithoutExt.substr(-10) == 'Collection'
       else
         bundle = null
 
@@ -121,6 +122,7 @@ class FileInfo
     isBehaviour: isBehaviour ? false
     isWidgetTemplate: isWidgetTemplate ? false
     isModelRepo: isModelRepo ? false
+    isCollection: isCollection ? false
     isCoffee: ext == '.coffee'
     isHtml: ext == '.html'
     isStylus: ext == '.styl'
