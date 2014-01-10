@@ -1,17 +1,35 @@
 path = require('path')
 fs = require('fs')
 requirejs = require('requirejs')
-walk = require('walk')
 {EventEmitter} = require('events')
 _ = require('underscore')
 
 Future = require('../utils/Future')
 rmrf = require('../utils/rmrf')
+fswalker = require '../utils/fswalker'
 
 buildManager = require('./BuildManager')
 BuildSession = require('./BuildSession')
 fileInfo = require('./FileInfo')
 ProjectWatcher = require('./ProjectWatcher')
+
+
+walkerFilter = (dir, name) ->
+  ###
+  Filters hidden and temporary files from being handled by the builder.
+  @param String dir dirname
+  @param String name basename
+  @return Boolean true if the file is OK for building, false if it should be skipped
+  ###
+  res = if name.charAt(0) == '.'
+    false
+  else
+    ext = path.extname(name)
+    if ext == '.orig' or ext.substr(-1) == '~'
+      false
+    else
+      dir.indexOf(path.sep + '.') == -1
+  res
 
 
 class ProjectBuilder extends EventEmitter
@@ -24,23 +42,6 @@ class ProjectBuilder extends EventEmitter
   constructor: (@params) ->
     fileInfo.setDirs(@params.baseDir, @params.targetDir)
     @setupWatcher() if @params.watch
-
-
-  _walkerFilter: (dir, name) ->
-    ###
-    Filters hidden and temporary files from being handled by the builder.
-    @param String dir dirname
-    @param String name basename
-    @return Boolean true if the file is OK for building, false if it should be skipped
-    ###
-    if name.charAt(0) == '.'
-      false
-    else
-      ext = path.extname(name)
-      if ext == '.orig' or ext.substr(-1) == '~'
-        false
-      else
-        dir.indexOf(path.sep + '.') == -1
 
 
   build: ->
@@ -59,25 +60,20 @@ class ProjectBuilder extends EventEmitter
       completePromise.done => @watchDir(dir)
 
       completePromise.fork()
-      walker = walk.walk(dir)
+      walker = fswalker(dir, filter: walkerFilter)
       walker.on 'file', (root, stat, next) =>
-        if @_walkerFilter(root, stat.name)
-          relativeDir = root.substr(relativePos)
-          payloadCallback("#{relativeDir}/#{stat.name}", stat)
-          setTimeout next, 0
-        else
-          next()
+        relativeDir = root.substr(relativePos)
+        payloadCallback("#{relativeDir}/#{stat.name}", stat)
+        setTimeout next, 0
 
       walker.on 'symbolicLink', (root, stat, next) =>
-        if @_walkerFilter(root, stat.name)
-          relativeDir = root.substr(relativePos)
-          payloadCallback("#{relativeDir}/#{stat.name}", stat)
+        relativeDir = root.substr(relativePos)
+        payloadCallback("#{relativeDir}/#{stat.name}", stat)
         next()
 
       if (@params.watch)
         walker.on 'directory', (root, stat, next) =>
-          if @_walkerFilter(root, stat.name)
-            completePromise.done => @watchDir("#{root}/#{stat.name}")
+          completePromise.done => @watchDir("#{root}/#{stat.name}")
           next()
 
       walker.on 'end', ->
@@ -229,20 +225,17 @@ class ProjectBuilder extends EventEmitter
             result = Future.single()
             sessionCompletePromise.done => @watchDir(dir)
 
-            walker = walk.walk(dir)
+            walker = fswalker(dir, filter: walkerFilter)
             walker.on 'file', (root, stat, next) =>
-              if @_walkerFilter(root, stat.name)
-                buildSession.add(path.join(root, stat.name))
+              buildSession.add(path.join(root, stat.name))
               next()
 
             walker.on 'symbolicLink', (root, stat, next) =>
-              if @_walkerFilter(root, stat.name)
-                buildSession.add(path.join(root, stat.name))
+              buildSession.add(path.join(root, stat.name))
               next()
 
             walker.on 'directory', (root, stat, next) =>
-              if @_walkerFilter(root, stat.name)
-                sessionCompletePromise.done => @watchDir("#{root}/#{stat.name}")
+              sessionCompletePromise.done => @watchDir("#{root}/#{stat.name}")
               next()
 
             walker.on 'end', ->
