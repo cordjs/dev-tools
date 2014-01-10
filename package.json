@@ -23,7 +23,7 @@
     "nib":              ">=1.0.1",
     "postal":           "=0.7.3",
     "requirejs":        "=2.1.8",
-    "stylus":           ">=0.40.3",
+    "stylus":           "=0.41.3",
     "uglify-js":        ">=2.4.1",
     "underscore":       "=1.4.3"
   },
