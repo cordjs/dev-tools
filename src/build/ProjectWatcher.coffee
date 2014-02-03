@@ -1,9 +1,16 @@
-path = require('path')
-fs = require('fs')
-_ = require('underscore')
-{EventEmitter} = require('events')
+{EventEmitter} = require 'events'
+fs             = require 'fs'
+path           = require 'path'
 
-Future = require('../utils/Future')
+_ = require 'underscore'
+
+Future = require '../utils/Future'
+
+# pathwatcher is preferred watching library, but if it's not installed, using standard buggy (in OS-X) fs.watch
+watcher = try
+  require 'pathwatcher'
+catch
+  fs
 
 
 class ProjectWatcher extends EventEmitter
@@ -58,7 +65,7 @@ class ProjectWatcher extends EventEmitter
         watchAll: false
         children: {}
         contents: @_readdir(dir)
-        watcher: fs.watch dir, (event, filename) =>
+        watcher: watcher.watch dir, (event, filename) =>
           @_handleDir(watchInfo, filename, event)
       parentInfo.children[localName] = watchInfo
       watchInfo
