@@ -6,12 +6,6 @@ _ = require 'underscore'
 
 Future = require '../utils/Future'
 
-# pathwatcher is preferred watching library, but if it's not installed, using standard buggy (in OS-X) fs.watch
-watcher = try
-  require 'pathwatcher'
-catch
-  fs
-
 
 class ProjectWatcher extends EventEmitter
   ###
@@ -27,6 +21,8 @@ class ProjectWatcher extends EventEmitter
   _aggregateTimeout: null
   _previousAnalyzeAndEmit: null
 
+  _watcher: null
+
 
   constructor: (@baseDir) ->
     rootInfo =
@@ -41,6 +37,13 @@ class ProjectWatcher extends EventEmitter
     @_analyzeList = {}
 
     @_previousAnalyzeAndEmit = Future.resolved()
+
+    # pathwatcher is preferred watching library, but if it's not installed, using standard buggy (in OS-X) fs.watch
+    @_watcher = try
+      require 'pathwatcher'
+    catch
+      fs
+
 
 
   addDir: (dir) ->
@@ -65,7 +68,7 @@ class ProjectWatcher extends EventEmitter
         watchAll: false
         children: {}
         contents: @_readdir(dir)
-        watcher: watcher.watch dir, (event, filename) =>
+        watcher: @_watcher.watch dir, (event, filename) =>
           @_handleDir(watchInfo, filename, event)
       parentInfo.children[localName] = watchInfo
       watchInfo
