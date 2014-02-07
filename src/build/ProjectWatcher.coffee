@@ -94,7 +94,7 @@ class ProjectWatcher extends EventEmitter
 
 
   _handleDir: (watchInfo, filename, event) ->
-    console.log "watch event", event, filename, watchInfo.dir
+    #console.log "watch event", event, filename, watchInfo.dir
     @_analyzeDir(watchInfo)
 
 
@@ -127,6 +127,7 @@ class ProjectWatcher extends EventEmitter
     @param Map[String -> Object]
     @return Future
     ###
+    #console.log 'aggregated watch event', _.keys(dirList).map (d) => d.substr(@baseDir.length + 1)
     result = new Future
     summaryChangeMap = {}
     summaryRemoveList = []
