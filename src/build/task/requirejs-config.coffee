@@ -16,7 +16,7 @@ module.exports = (task) ->
   @return Future[Nothing]
   ###
   if not _requirejsReady?
-    pathConfig = require "#{ path.join(task.baseDir, 'public', pathToCore) }/requirejs/pathConfig"
+    pathConfig = require "#{ path.join(task.targetDir, 'public', pathToCore) }/requirejs/pathConfig"
     requirejs.config
       baseUrl: "#{ task.targetDir }/public"
       nodeRequire: require

@@ -36,7 +36,7 @@ class CompileStylus extends BuildTask
     dst = "#{ @params.targetDir }/#{ dirname }/#{ basename }.css"
 
     Future.call(fs.readFile, src, 'utf8').flatMap (stylusStr) =>
-      pu = pathUtils(@params.baseDir)
+      pu = pathUtils(@params.targetDir)
       preprocessedStr = stylusStr.replace replaceImportRe, (match, p1) ->
         "@import '#{ pu.convertCssPath(p1, src) }'"
       styl = stylus(preprocessedStr)
