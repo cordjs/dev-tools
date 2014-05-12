@@ -1,7 +1,13 @@
+system = require 'system'
+
 page = require('webpage').create()
 
 
-page.open 'http://127.0.0.1:18180/tasks/my/', ->
+page.onConsoleMessage = (msg) ->
+  system.stderr.writeLine('console: ' + msg)
+
+
+page.open 'http://127.0.0.1:18180/', ->
   page.addCookie
     name: 'accessToken'
     value: 'af4b4dfedd0ae9cd60fabc5eb4bd34f2b8bfbe9a'
@@ -38,13 +44,13 @@ page.open 'http://127.0.0.1:18180/tasks/my/', ->
 
 #  page.reload()
   setTimeout ->
-    x = page.evaluate ->
-      $('.login').val('test@megaplan.ru')
-      $('.password').val('^HTmV5Ek2RE7J8#tSFEv')
+    page.evaluate ->
+      $('.login').val('davojan@ya.ru')
+      $('.password').val('ltcznmckjyjd')
       $('.login-submit').click()
-    console.log x
+    page.render('example-filled.png')
     setTimeout ->
       page.render('example.png')
       phantom.exit()
     , 15000
-  , 5000
+  , 2000
