@@ -126,6 +126,7 @@ class FileInfo
     isCoffee: ext == '.coffee'
     isHtml: ext == '.html'
     isStylus: ext == '.styl'
+    isTestSpec: parts[0] == 'test' and parts[parts.length-1] == 'specs' and ext == '.coffee'
 
 
   @getBuildDestinationFile: (file, info) ->
