@@ -1,10 +1,10 @@
-CompileCoffeeScript = require('./CompileCoffeeScript')
+CompileCoffeeScript = require './CompileCoffeeScript'
 
 
 class CompileTest extends CompileCoffeeScript
 
   postCompilerCallback: (jsString) ->
-    "definePath(__filename, __dirname);" + jsString
+    "definePath(__filename, __dirname);\n" + jsString
 
 
 

@@ -1,6 +1,11 @@
 path = require('path')
 
 
+if path.sep == '\\' then sep = '\\\\' else sep = path.sep
+# regexp: !test/.*/specs/.*\.coffee$!
+detectTestPathRegExp = new RegExp('test'+sep+'.*'+sep+'specs'+sep+'.*\\.coffee$')
+
+
 class FileInfo
   ###
   @static
@@ -107,11 +112,6 @@ class FileInfo
             isCollection = ext == '.coffee' and fileWithoutExt.substr(-10) == 'Collection'
       else
         bundle = null
-    else
-      if path.sep == '\\' then sep = '\\\\' else sep = path.sep
-      # regexp: !test/.*/specs/.*\.coffee$!
-      regExp = new RegExp('test'+sep+'.*'+sep+'specs'+sep+'.*\\.coffee$')
-      isTestSpec = file.match(regExp)?
 
     fileName: fileName
     ext: ext
@@ -131,7 +131,7 @@ class FileInfo
     isCoffee: ext == '.coffee'
     isHtml: ext == '.html'
     isStylus: ext == '.styl'
-    isTestSpec: isTestSpec ? false
+    isTestSpec: file.match(detectTestPathRegExp)?
 
 
   @getBuildDestinationFile: (file, info) ->
