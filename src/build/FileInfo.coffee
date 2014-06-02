@@ -107,6 +107,11 @@ class FileInfo
             isCollection = ext == '.coffee' and fileWithoutExt.substr(-10) == 'Collection'
       else
         bundle = null
+    else
+      if path.sep == '\\' then sep = '\\\\' else sep = path.sep
+      # regexp: !test/.*/specs/.*\.coffee$!
+      regExp = new RegExp('test'+sep+'.*'+sep+'specs'+sep+'.*\\.coffee$')
+      isTestSpec = file.match(regExp)?
 
     fileName: fileName
     ext: ext
@@ -126,7 +131,7 @@ class FileInfo
     isCoffee: ext == '.coffee'
     isHtml: ext == '.html'
     isStylus: ext == '.styl'
-    isTestSpec: parts[0] == 'test' and parts[parts.length-1] == 'specs' and ext == '.coffee'
+    isTestSpec: isTestSpec ? false
 
 
   @getBuildDestinationFile: (file, info) ->
