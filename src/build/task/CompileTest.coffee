@@ -6,13 +6,13 @@ definePathString = "definePath(__filename, __dirname)\n"
 class CompileTest extends CompileCoffeeScript
 
   preCompilerCallback: (coffeeString) ->
-  # Parse source coffee script string
+    # Parse source coffee script string
     tokens = coffee.tokens(coffeeString)
 
     inIt = false
     linesToPaste = []
 
-  # find it-calls and stores their position and indent
+    # find it-calls and stores their position and indent
     for key, token of tokens
       if not inIt and token[0] == 'IDENTIFIER' and token[1] == 'it'
         inIt = true
@@ -22,7 +22,7 @@ class CompileTest extends CompileCoffeeScript
 
     linesToPaste = linesToPaste.reverse()
 
-  # insert after it-calls definePath-call
+    # insert after it-calls definePath-call
     for key, elem of linesToPaste
       {line, indent} = elem
       lineStartPos = @_lineStartPos(coffeeString, line)
