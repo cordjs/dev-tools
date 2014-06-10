@@ -11,6 +11,8 @@ BuildTask = require('./BuildTask')
 
 class CompileCoffeeScript extends BuildTask
 
+  # callback which runs before coffee-script file compilation
+  preCompilerCallback: null
   # callback which runs after coffee-script file compilation before writing js output
   postCompilerCallback: null
 
@@ -22,6 +24,7 @@ class CompileCoffeeScript extends BuildTask
     dst = "#{ @params.targetDir }/#{ dirname }/#{ basename }.js"
 
     Future.call(fs.readFile, src, 'utf8').map (coffeeString) =>
+      coffeeString = @preCompilerCallback(coffeeString) if @preCompilerCallback
       js = coffee.compile coffeeString,
         compile: true
         bare: true
@@ -29,9 +32,9 @@ class CompileCoffeeScript extends BuildTask
       if inf.isWidget or inf.isBehaviour or inf.isModelRepo or inf.isCollection
         name = inf.fileNameWithoutExt
         js = js.replace("return #{name};\n", "#{name}.__name = '#{name}';\n\n   return #{name};\n")
+      js = @postCompilerCallback(js) if @postCompilerCallback?
       js
     .zip(Future.call(mkdirp, path.dirname(dst))).flatMap (jsString) =>
-      jsString = @postCompilerCallback(jsString) if @postCompilerCallback?
       Future.call(fs.writeFile, dst, jsString)
     .flatMapFail (err) ->
       if err instanceof SyntaxError and err.location?
