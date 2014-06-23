@@ -32,7 +32,7 @@ class HeuristicGroupDetector
     remaining = Object.keys(@_countMap)
     # reverse-sorting of items based on their usage frequency
     # should help to find better group within limited amount of time
-    remaining = (_.sortBy remaining, (m) => @_countMap[m]).reverse()
+    remaining = _.sortBy(remaining, (m) => @_countMap[m]).reverse()
 
     resultGroups = []
     while true
@@ -65,12 +65,15 @@ class HeuristicGroupDetector
 
   _findBestGroup: (moduleList) ->
     groups = []
-#    console.log "findBestGroup --> ", moduleList.length, (new Date).getTime()
     @_maxGroupScore = 0
     @_thresholdTime = (new Date).getTime() + 120000
     for item, i in moduleList
       groups = groups.concat(@_collectGroups([], moduleList, i, Object.keys(@_curStat), 0))
-      break if (new Date).getTime() >= @_thresholdTime
+      if (new Date).getTime() >= @_thresholdTime
+        console.warn "Optimizer: interrupting calculation due to threshold time achieving!"
+        break
+    duration = ((new Date).getTime() - (@_thresholdTime - 120000)) / 1000
+    console.log "Found best group in", duration, "seconds" if duration > 5
     if groups.length > 0
       _.sortBy(groups, (item) -> item[1]).reverse()
       @groupRepo.createGroup(@_generateGroupId(groups[0][2]), groups[0][2])
@@ -116,8 +119,9 @@ class HeuristicGroupDetector
           if score > @_maxGroupScore and group.length > 1 # ignoring single-item groups
             result.push([cnt, score, group])
             @_maxGroupScore = score
-            @_thresholdTime = (new Date).getTime() + 30000 # moving threshold ahead
-#            console.log "maxScore = ", score, group.length, (new Date).getTime()
+            if (new Date).getTime() > @_thresholdTime - 30000
+              console.log "Optimizer: increasing threshold time..."
+              @_thresholdTime += 30000 # moving threshold ahead
           result = result.concat(@_collectGroups(group, list, i + 1, matchPages, level + 1))
     result
 
