@@ -51,9 +51,12 @@ class ProjectWatcher extends EventEmitter
       parts = dir.substr(@baseDir.length).split(path.sep)
       parts = _.compact(parts)
       curParent = @_watchTree
-      for part in parts
-        curParent = @_watchDir(curParent, part)
-      curParent.watchAll = true
+      try
+        for part in parts
+          curParent = @_watchDir(curParent, part)
+        curParent.watchAll = true
+      catch err
+        console.error "Watch failed for the directory [#{curParent.dir}/#{part}], reason:", err
     else
       throw new Error("Watch directory #{dir} must be sub-directory of base dir #{@baseDir}!")
 
