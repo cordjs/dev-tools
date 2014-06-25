@@ -115,8 +115,8 @@ class JsOptimizer
       do (modules) =>
         result.fork()
         # non-amd modules must be reordered according to their dependencies to work properly in merged file
-        @_mergeGroup(@_reorderShimModules(modules, requireConf.shim), requireConf).done (fileName) ->
-          resultMap[fileName] = modules
+        @_mergeGroup(@_reorderShimModules(modules, requireConf.shim), requireConf).done (fileName, existingModules) ->
+          resultMap[fileName] = existingModules
           result.resolve()
     result.resolve().map -> resultMap
 
@@ -129,6 +129,7 @@ class JsOptimizer
     @param Object requireConf requirejs configuration object
     @return Future[String]
     ###
+    existingModules = []
     contentArr = []
     csUtilHit = {}
     futures = for module, j in modules
@@ -162,6 +163,7 @@ class JsOptimizer
             js += "\ndefine('#{module}', function(){});\n"
 
           contentArr[j] = js
+          existingModules.push(module)
           true
         .mapFail ->
           # ignoring absent files (it may be caused by the obsolete stat-file)
@@ -184,7 +186,7 @@ class JsOptimizer
       fileName = sha1(mergedContent)
       console.log "Saving #{fileName}.js ..."
       Future.call(fs.writeFile, "#{@_zDir}/#{ fileName }.js", mergedContent).map ->
-        fileName
+        [fileName, existingModules]
     .failAloud()
 
 

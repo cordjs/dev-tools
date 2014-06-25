@@ -1,16 +1,16 @@
 fs = require 'fs'
 
-_        = require 'underscore'
-mkdirp   = require 'mkdirp'
+_      = require 'underscore'
+mkdirp = require 'mkdirp'
 
 Future = require '../utils/Future'
 rmrf   = require '../utils/rmrf'
 sha1   = require '../utils/sha1'
 
-browserInitGenerator     = require './browserInitGenerator'
-CssOptimizer             = require './CssOptimizer'
-JsOptimizer              = require './JsOptimizer'
-requirejsConfig          = require './requirejsConfig'
+browserInitGenerator = require './browserInitGenerator'
+CssOptimizer         = require './CssOptimizer'
+JsOptimizer          = require './JsOptimizer'
+requirejsConfig      = require './requirejsConfig'
 
 
 class Optimizer
@@ -36,15 +36,21 @@ class Optimizer
     zDirFuture = (if @params.clean then rmrf(@_zDir) else Future.resolved()).flatMap =>
       Future.call(mkdirp, @_zDir)
 
-    jsOptimizer  = new JsOptimizer(@params, zDirFuture)
-    cssOptimizerFuture =
+    cssOptimizerPromise =
       if @params.css
         (new CssOptimizer(@params, zDirFuture)).run()
       else
-        Future.call(fs.unlink, "#{@params.targetDir}/conf/css-to-group-generated.js").map ->
-          {}
-        .mapFail -> {}
-    jsOptimizer.run().zip(cssOptimizerFuture).flatMap (jsGroupMap, cssGroupMap) =>
+        Future.call(fs.unlink, "#{@params.targetDir}/conf/css-to-group-generated.js")
+          .then -> {}
+          .catch -> {}
+
+    jsOptimizerPromise =
+      if @params.js
+        (new JsOptimizer(@params, zDirFuture)).run()
+      else
+        Future.resolved({})
+
+    jsOptimizerPromise.zip(cssOptimizerPromise).flatMap (jsGroupMap, cssGroupMap) =>
       console.log "Generating browser-init script..."
       browserInitGenerator.generate(@params, jsGroupMap, cssGroupMap)
     .flatMap (browserInitScriptString) =>

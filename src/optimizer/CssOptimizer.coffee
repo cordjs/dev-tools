@@ -96,8 +96,8 @@ class CssOptimizer
     for groupId, cssFiles of groupMap
       do (cssFiles) =>
         result.fork()
-        @_mergeGroup(@_reorderGroupFiles(cssFiles)).done (fileName) ->
-          resultMap[fileName] = cssFiles
+        @_mergeGroup(@_reorderGroupFiles(cssFiles)).done (fileName, existingFiles) ->
+          resultMap[fileName] = existingFiles
           result.resolve()
     result.resolve().map -> resultMap
 
@@ -110,6 +110,7 @@ class CssOptimizer
     @param Object requireConf requirejs configuration object
     @return Future[String]
     ###
+    existingFiles = []
     contentArr = []
     futures = for file, j in cssFiles
       do (file, j) =>
@@ -123,6 +124,7 @@ class CssOptimizer
           css = "/* #{file} */\n\n#{css}\n"
 
           contentArr[j] = css
+          existingFiles.push(file)
           true
         .mapFail ->
           # ignoring absent files (it may be caused by the obsolete stat-file)
@@ -130,11 +132,11 @@ class CssOptimizer
 
     Future.sequence(futures).zip(@zDirFuture).flatMap =>
       mergedContent = contentArr.join("\n\n")
-      mergedContent = cleanCss.minify(mergedContent)
+      mergedContent = cleanCss.minify(mergedContent) if @params.cssMinify
       fileName = sha1(mergedContent)
       console.log "Saving #{fileName}.css ..."
       Future.call(fs.writeFile, "#{@_zDir}/#{fileName}.css", mergedContent).map ->
-        fileName
+        [fileName, existingFiles]
     .failAloud()
 
 

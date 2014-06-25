@@ -62,7 +62,9 @@ exports.run = (actionCallbacks) ->
                                DEFAULT_OUTPUT_DIR + '"', DEFAULT_OUTPUT_DIR)
     .option('-C, --clean', 'clean existing optimized files before writing new ones')
     .option('--disable-css', 'do not perform CSS group optimization. By default CSS optimization is enabled.')
-    .option('--disable-js-minify', 'do not minify (via uglify-js) optimized javascript files. By default JS minification is enabled.')
+    .option('--disable-css-minify', 'do not minify (via clean-css) merged CSS files. By default CSS minification is enabled.')
+    .option('--disable-js', 'do not perform JS group optimization. By default JS optimization is enabled.')
+    .option('--disable-js-minify', 'do not minify (via uglify-js) merged javascript files. By default JS minification is enabled.')
     .action(actionCallbacks.optimize)
 
   program.parse(process.argv)
