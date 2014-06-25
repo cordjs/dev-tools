@@ -74,12 +74,12 @@ defineFuture = (_) ->
       @_alwaysCallbacks = []
       @_name = name
 
-      if @_name
-        if global.config?.debug.core
-          @_incompleteTimeout = setTimeout =>
-            if @state() == 'pending' and @_counter > 0
-              _console.warn "Future timeouted [#{@_name}] (10 seconds), counter = #{@_counter}"
-          , 10 * 1000
+      timeout = global.config?.debug.future.timeout
+      if timeout > 0
+        @_incompleteTimeout = setTimeout =>
+          if @state() == 'pending' and @_counter > 0
+            _console.warn "Future timeouted [#{@_name}] (10 seconds), counter = #{@_counter}"
+        , timeout
 
 
     clearDoneCallbacks: ->
@@ -113,7 +113,7 @@ defineFuture = (_) ->
       Indicates that one of the waiting values is ready.
       If there are some arguments passed then they are passed unchanged to the done-callbacks.
       If there is no value remaining in the aggregate and done method is already called
-       than callback is fired immedialtely.
+       than callback is fired immediately.
       Should have according fork() call before.
       ###
       if @_counter > 0
@@ -127,7 +127,7 @@ defineFuture = (_) ->
             @_runAlwaysCallbacks() if @_alwaysCallbacks.length > 0
             # Clean debug timeout
             if @_incompleteTimeout?
-              clearTimeout @_incompleteTimeout
+              clearTimeout(@_incompleteTimeout)
               @_incompleteTimeout = null
           # not changing state to 'resolved' here because it is possible to call fork() again if done hasn't called yet
       else
@@ -149,7 +149,7 @@ defineFuture = (_) ->
         @_counter--
         if @_state != 'rejected'
           @_state = 'rejected'
-          @_callbackArgs = [err ? 'Future rejected without error message!']
+          @_callbackArgs = [err ? new Error("Future[#{@_name}] rejected without error message!")]
           @_runFailCallbacks() if @_failCallbacks.length > 0
           @_runAlwaysCallbacks() if @_alwaysCallbacks.length > 0
       else
@@ -230,7 +230,7 @@ defineFuture = (_) ->
        are successful results of the future.
       ###
       @_alwaysCallbacks.push(callback)
-      @_runAlwaysCallbacks() if @_counter == 0
+      @_runAlwaysCallbacks() if @_counter == 0 or @_state == 'rejected'
       this
 
 
@@ -722,7 +722,7 @@ defineFuture = (_) ->
 
     clear: ->
       if @_incompleteTimeout?
-        clearTimeout @_incompleteTimeout
+        clearTimeout(@_incompleteTimeout)
         @_incompleteTimeout = null
 
 
