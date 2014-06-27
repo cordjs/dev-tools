@@ -10,7 +10,8 @@ CompileStylus         = require './task/CompileStylus'
 CompileWidgetTemplate = require './task/CompileWidgetTemplate'
 Fake                  = require './task/Fake'
 CopyFile              = require './task/CopyFile'
-CompileTest           = require './task/CompileTest'
+CompileTestSpec       = require './task/CompileTestSpec'
+CompileTestObject     = require './task/CompileTestObject'
 
 
 class BuildWorker
@@ -43,7 +44,8 @@ class BuildWorker
     @return Class
     ###
     info = taskParams.info
-    if info.isTestSpec then CompileTest
+    if info.isTestSpec then CompileTestSpec
+    else if info.isTestObject then CompileTestObject
     else if info.isCoffee then CompileCoffeeScript
     else if info.isStylus then CompileStylus
     else if info.isWidgetTemplate then CompileWidgetTemplate
