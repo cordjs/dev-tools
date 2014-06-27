@@ -1,9 +1,9 @@
 should = require 'should'
-CompileTest = require '../task/CompileTest'
+CompileTestSpec = require '../task/CompileTestSpec'
 
 describe 'Test compiler check', ->
-  compileTest = new CompileTest
-  definePathString = 'definePath(__filename, __dirname)'
+  compileTest = new CompileTestSpec
+  definePathString = "definePath(__filename, __dirname)"
 
   it 'Checks simple case, which consists of it with describe message without done argument', ->
     coffeeScript = """
@@ -15,6 +15,7 @@ describe 'One test, one touch', ->
 #{definePathString}
 describe 'One test, one touch', ->
   it 'should test something', ->
+
     #{definePathString}
     nextCall()
 """
@@ -30,6 +31,7 @@ describe 'One test, one touch', ->
 #{definePathString}
 describe 'One test, one touch', ->
   it 'should test something and executes callback', (done) ->
+
     #{definePathString}
     nextCall()
 """
@@ -49,11 +51,13 @@ describe 'Two tests, two touches', ->
 #{definePathString}
 describe 'Two tests, two touches', ->
   it 'should test first case', (done) ->
+
     #{definePathString}
     firstCall()
 
 
   it 'should test second case', ->
+
     #{definePathString}
     secondCall()
 """
@@ -69,6 +73,7 @@ describe 'It is simple test with it ', ->
 definePath(__filename, __dirname)
 describe 'It is simple test with it ', ->
   it 'should call it or not call it', ->
-    definePath(__filename, __dirname)
+
+    #{definePathString}
     itCallback(' it argument ->')
 """

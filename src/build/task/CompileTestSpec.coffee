@@ -3,7 +3,7 @@ coffee = require 'coffee-script'
 
 definePathString = "definePath(__filename, __dirname)\n"
 
-class CompileTest extends CompileCoffeeScript
+class CompileTestSpec extends CompileCoffeeScript
 
   preCompilerCallback: (coffeeString) ->
     # Parse source coffee script string
@@ -46,4 +46,4 @@ class CompileTest extends CompileCoffeeScript
 
 
 
-module.exports = CompileTest
+module.exports = CompileTestSpec
