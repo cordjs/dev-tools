@@ -5,7 +5,17 @@ path = require('path')
 class CompileTestObject extends CompileCoffeeScript
 
   preCompilerCallback: (coffeeString) ->
-    coffeeString + "\nmodule.exports = " + path.basename(@params.file, '.coffee')
+    """
+currentAbsolutePath = stof.getCurrentAbsolutePath()
+currentRelativePath = stof.getCurrentRelativePath()
+definePath(__filename)
+
+#{coffeeString}
+
+module.exports = #{path.basename(@params.file, '.coffee')}
+stof.setCurrentAbsolutePath(currentAbsolutePath)
+stof.setCurrentRelativePath(currentRelativePath)
+"""
 
 
 
