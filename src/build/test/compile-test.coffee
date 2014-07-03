@@ -3,7 +3,7 @@ CompileTestSpec = require '../task/CompileTestSpec'
 
 describe 'Test compiler check', ->
   compileTest = new CompileTestSpec
-  definePathString = "definePath(__filename, __dirname)"
+  definePathString = "definePath(__filename)"
 
   it 'Checks simple case, which consists of it with describe message without done argument', ->
     coffeeScript = """
@@ -70,7 +70,7 @@ describe 'It is simple test with it ', ->
     itCallback(' it argument ->')
 """
     compileTest.preCompilerCallback(coffeeScript).should.equal """
-definePath(__filename, __dirname)
+#{definePathString}
 describe 'It is simple test with it ', ->
   it 'should call it or not call it', ->
 

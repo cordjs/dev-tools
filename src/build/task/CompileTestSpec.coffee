@@ -1,7 +1,7 @@
 CompileCoffeeScript = require './CompileCoffeeScript'
 coffee = require 'coffee-script'
 
-definePathString = "definePath(__filename, __dirname)\n"
+definePathString = "definePath(__filename)\n"
 
 class CompileTestSpec extends CompileCoffeeScript
 
