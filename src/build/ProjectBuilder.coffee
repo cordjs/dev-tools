@@ -117,7 +117,7 @@ class ProjectBuilder extends EventEmitter
               else
                 buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
                   .link(completePromise)
-            else
+            else if not (info.fileName == 'pathUtils.coffee' and info.lastDirName == 'requirejs')
               task = buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
               corePromise.when(task)
               completePromise.when(task)

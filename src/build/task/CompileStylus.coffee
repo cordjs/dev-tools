@@ -35,6 +35,7 @@ pathUtils = (baseDir, repeat = 0) ->
     _pathUtils = pathUtils(baseDir, repeat + 1)
   _pathUtils
 
+
 class CompileStylus extends BuildTask
 
   @totalPreprocessTime: [0, 0]
