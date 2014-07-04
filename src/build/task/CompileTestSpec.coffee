@@ -2,6 +2,7 @@ CompileCoffeeScript = require './CompileCoffeeScript'
 coffee = require 'coffee-script'
 
 definePathString = "definePath(__filename)\n"
+setUncaughtExceptionHandlerString = "setUncaughtExceptionHandler(__filename)\n"
 
 class CompileTestSpec extends CompileCoffeeScript
 
@@ -28,7 +29,7 @@ class CompileTestSpec extends CompileCoffeeScript
       lineStartPos = @_lineStartPos(coffeeString, line)
       coffeeString = coffeeString.substr(0, lineStartPos) + "\n" + @_pad('', indent) + definePathString + coffeeString.substr(lineStartPos)
 
-    definePathString + coffeeString
+    definePathString + setUncaughtExceptionHandlerString + coffeeString
 
 
   _pad: (str, width) ->
