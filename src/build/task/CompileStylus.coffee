@@ -17,11 +17,22 @@ stylusLib = (style) ->
 replaceImportRe = /^@import ['"](.*\/\/.+)['"]$/gm
 
 _pathUtils = null
-pathUtils = (baseDir) ->
+pathUtils = (baseDir, repeat = 0) ->
   ###
   Lazy val
   ###
   _pathUtils = require "#{ path.join(baseDir, 'public', pathToCore) }/requirejs/pathUtils" if not _pathUtils?
+  if typeof _pathUtils.convertCssPath != 'function' and repeat < 10
+    path = "#{ path.join(baseDir, 'public', pathToCore) }/requirejs/pathUtils.js"
+    console.error ''
+    console.error '###############################################################'
+    console.error "Invalid pathUtils:", _pathUtils, _pathUtils._publicPrefix, _pathUtils.convertCssPath, repeat
+    console.error path
+    console.error fs.readFileSync(path, encoding: 'utf8')
+    console.error '###############################################################'
+    console.error ''
+    _pathUtils = null
+    _pathUtils = pathUtils(baseDir, repeat + 1)
   _pathUtils
 
 class CompileStylus extends BuildTask

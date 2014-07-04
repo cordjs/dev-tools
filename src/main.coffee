@@ -23,7 +23,8 @@ exports.main = ->
       cleanFuture = if buildOptions.clean then commands.clean(options) else Future.resolved()
       cleanFuture.map ->
         builder = new ProjectBuilder(buildOptions)
-        builder.build()
+        builder.build().fail ->
+          process.exit(1) if not buildOptions.watch
         [builder, buildOptions]
 
 
