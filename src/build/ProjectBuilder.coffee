@@ -117,7 +117,7 @@ class ProjectBuilder extends EventEmitter
               else
                 buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
                   .link(completePromise)
-            else
+            else if not (info.fileName == 'pathUtils.coffee' and info.lastDirName == 'requirejs')
               task = buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
               corePromise.when(task)
               completePromise.when(task)
@@ -191,15 +191,15 @@ class ProjectBuilder extends EventEmitter
         nonWidgetFilesPromise.resolve()
         completePromise.resolve()
 
-    completePromise.done =>
+    @_previousSessionPromise = completePromise.catch -> true
+
+    completePromise.always (err) ->
       diff = process.hrtime(start)
-      console.log "Build complete in #{ (diff[0] * 1e9 + diff[1]) / 1e6 } ms"
+      verb = if err then 'failed' else 'complete'
+      console.log "Build #{verb} in #{ (diff[0] * 1e9 + diff[1]) / 1e6 } ms"
+    .then =>
       buildManager.stop()
       @emit 'complete'
-
-    @_previousSessionPromise = completePromise
-
-    this
 
 
   setupWatcher: ->
