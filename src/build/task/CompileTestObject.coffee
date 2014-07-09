@@ -6,15 +6,14 @@ class CompileTestObject extends CompileCoffeeScript
 
   preCompilerCallback: (coffeeString) ->
     """
-currentAbsolutePath = stof.getCurrentAbsolutePath()
-currentRelativePath = stof.getCurrentRelativePath()
-definePath(__dirname)
+context = stof.getCurrentContext()
+stof.defineContext(__filename, false)
 
 #{coffeeString}
 
 module.exports = #{path.basename(@params.file, '.coffee')}
-stof.setCurrentAbsolutePath(currentAbsolutePath)
-stof.setCurrentRelativePath(currentRelativePath)
+
+stof.defineContext(context, false)
 """
 
 
