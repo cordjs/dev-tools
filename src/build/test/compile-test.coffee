@@ -3,7 +3,7 @@ CompileTestSpec = require '../task/CompileTestSpec'
 
 describe 'Test compiler check', ->
   compileTest = new CompileTestSpec
-  definePathString = "definePath(__filename)"
+  definePathString = "stof.defineContext(__filename)"
 
   it 'Checks simple case, which consists of it with describe message without done argument', ->
     coffeeScript = """

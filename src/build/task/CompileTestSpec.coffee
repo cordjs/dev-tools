@@ -1,7 +1,8 @@
 CompileCoffeeScript = require './CompileCoffeeScript'
 coffee = require 'coffee-script'
 
-definePathString = "definePath(__filename)\n"
+definePathString = "stof.defineContext(__filename)\n"
+
 
 class CompileTestSpec extends CompileCoffeeScript
 
@@ -22,7 +23,7 @@ class CompileTestSpec extends CompileCoffeeScript
 
     linesToPaste = linesToPaste.reverse()
 
-    # insert after it-calls definePath-call
+    # insert after it-calls defineContext-call
     for key, elem of linesToPaste
       {line, indent} = elem
       lineStartPos = @_lineStartPos(coffeeString, line)
