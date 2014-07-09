@@ -1,7 +1,9 @@
 CompileCoffeeScript = require './CompileCoffeeScript'
 coffee = require 'coffee-script'
 
-definePathString = "definePath(__filename)\n"
+definePathString = "definePath(__dirname)\n"
+defineUncaughtExceptionHandler = "defineUncaughtExceptionHandler(__filename)\n"
+
 
 class CompileTestSpec extends CompileCoffeeScript
 
@@ -25,9 +27,11 @@ class CompileTestSpec extends CompileCoffeeScript
     # insert after it-calls definePath-call
     for key, elem of linesToPaste
       {line, indent} = elem
+      indent = @_pad('', indent)
       lineStartPos = @_lineStartPos(coffeeString, line)
       coffeeString = coffeeString.substr(0, lineStartPos) + "\n" +
-        @_pad('', indent) + definePathString +
+        indent + definePathString +
+        indent + defineUncaughtExceptionHandler +
         coffeeString.substr(lineStartPos)
 
     definePathString + coffeeString

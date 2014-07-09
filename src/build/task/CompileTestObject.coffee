@@ -8,7 +8,7 @@ class CompileTestObject extends CompileCoffeeScript
     """
 currentAbsolutePath = stof.getCurrentAbsolutePath()
 currentRelativePath = stof.getCurrentRelativePath()
-definePath(__filename)
+definePath(__dirname)
 
 #{coffeeString}
 
