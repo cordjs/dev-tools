@@ -3,7 +3,8 @@ CompileTestSpec = require '../task/CompileTestSpec'
 
 describe 'Test compiler check', ->
   compileTest = new CompileTestSpec
-  definePathString = "stof.defineContext(__filename)"
+  defineContextString = "stof.defineContext(__filename, false)"
+  defineContextStringInItBlock = "stof.defineContext(__filename)"
 
   it 'Checks simple case, which consists of it with describe message without done argument', ->
     coffeeScript = """
@@ -12,11 +13,11 @@ describe 'One test, one touch', ->
     nextCall()
 """
     compileTest.preCompilerCallback(coffeeScript).should.equal """
-#{definePathString}
+#{defineContextString}
 describe 'One test, one touch', ->
   it 'should test something', ->
 
-    #{definePathString}
+    #{defineContextStringInItBlock}
     nextCall()
 """
 
@@ -28,11 +29,11 @@ describe 'One test, one touch', ->
     nextCall()
 """
     compileTest.preCompilerCallback(coffeeScript).should.equal """
-#{definePathString}
+#{defineContextString}
 describe 'One test, one touch', ->
   it 'should test something and executes callback', (done) ->
 
-    #{definePathString}
+    #{defineContextStringInItBlock}
     nextCall()
 """
 
@@ -48,17 +49,17 @@ describe 'Two tests, two touches', ->
     secondCall()
 """
     compileTest.preCompilerCallback(coffeeScript).should.equal """
-#{definePathString}
+#{defineContextString}
 describe 'Two tests, two touches', ->
   it 'should test first case', (done) ->
 
-    #{definePathString}
+    #{defineContextStringInItBlock}
     firstCall()
 
 
   it 'should test second case', ->
 
-    #{definePathString}
+    #{defineContextStringInItBlock}
     secondCall()
 """
     
@@ -70,10 +71,10 @@ describe 'It is simple test with it ', ->
     itCallback(' it argument ->')
 """
     compileTest.preCompilerCallback(coffeeScript).should.equal """
-#{definePathString}
+#{defineContextString}
 describe 'It is simple test with it ', ->
   it 'should call it or not call it', ->
 
-    #{definePathString}
+    #{defineContextStringInItBlock}
     itCallback(' it argument ->')
 """

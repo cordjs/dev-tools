@@ -1,7 +1,8 @@
 CompileCoffeeScript = require './CompileCoffeeScript'
 coffee = require 'coffee-script'
 
-definePathString = "stof.defineContext(__filename)\n"
+defineContextString = "stof.defineContext(__filename, false)\n"
+defineContextStringInItBlock = "stof.defineContext(__filename)\n"
 
 
 class CompileTestSpec extends CompileCoffeeScript
@@ -28,10 +29,10 @@ class CompileTestSpec extends CompileCoffeeScript
       {line, indent} = elem
       lineStartPos = @_lineStartPos(coffeeString, line)
       coffeeString = coffeeString.substr(0, lineStartPos) + "\n" +
-        @_pad('', indent) + definePathString +
+        @_pad('', indent) + defineContextStringInItBlock +
         coffeeString.substr(lineStartPos)
 
-    definePathString + coffeeString
+    defineContextString + coffeeString
 
 
   _pad: (str, width) ->
