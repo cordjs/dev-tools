@@ -74,6 +74,7 @@ normalizeBuildOptions = (options) ->
   watch: !!options.watch
   debug: !!options.debug
   clean: !!options.clean
+  appConfigName: "#{ if options.app then options.app else 'application'}"
 
 
 normalizeServerOptions = (options) ->

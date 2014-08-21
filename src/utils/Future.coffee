@@ -2,8 +2,6 @@
 
 defineFuture = (_) ->
 
-  throwExceptionCallback = (err) -> throw err
-
   class Future
     ###
     Simple aggregative future/promise class.
@@ -78,21 +76,8 @@ defineFuture = (_) ->
       if timeout > 0
         @_incompleteTimeout = setTimeout =>
           if @state() == 'pending' and @_counter > 0
-            _console.warn "Future timeouted [#{@_name}] (10 seconds), counter = #{@_counter}"
+            _console.warn "Future timed out [#{@_name}] (#{timeout/1000} seconds), counter = #{@_counter}"
         , timeout
-
-
-    clearDoneCallbacks: ->
-      @_doneCallbacks = []
-
-
-    clearFailCallbacks: ->
-      @_failCallbacks = []
-
-
-    clearAllCallbacks: ->
-      @_doneCallbacks = []
-      @_failCallbacks = []
 
 
     fork: ->
@@ -234,11 +219,14 @@ defineFuture = (_) ->
       this
 
 
-    failAloud: ->
+    failAloud: (message) ->
       ###
       Adds often-used scenario of fail that just throws exception with the error
       ###
-      @fail(throwExceptionCallback)
+      name = @_name
+      @fail (err) ->
+        _console.error "Future(#{name})::failAloud#{ if message then " with message: #{message}" else '' }", err
+        throw err
 
 
     callback: (neededArgs...) ->
@@ -366,6 +354,15 @@ defineFuture = (_) ->
       ###
       this.catch (err) ->
         throw err if not predicate(err)
+
+
+    spread: (onResolved, onRejected) ->
+      ###
+      Like then but expands Array result of the Future to the multiple arguments of the onResolved function call.
+      ###
+      this.then (array) ->
+        onResolved.apply(null, array)
+      , onRejected
 
 
     map: (callback) ->
@@ -721,6 +718,13 @@ defineFuture = (_) ->
 
 
     clear: ->
+      ###
+      Way to eliminate any impact of resolving or rejecting or time-outing of this promise.
+      Should be used when actions that are waiting for this promise completion are no more needed.
+      ###
+      @_doneCallbacks = []
+      @_failCallbacks = []
+      @_alwaysCallbacks = []
       if @_incompleteTimeout?
         clearTimeout(@_incompleteTimeout)
         @_incompleteTimeout = null

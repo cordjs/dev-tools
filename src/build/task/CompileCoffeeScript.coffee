@@ -20,8 +20,10 @@ class CompileCoffeeScript extends BuildTask
     dirname = path.dirname(@params.file)
     basename = path.basename(@params.file, '.coffee')
 
+    dstName = if @params.info.isAppConfig then 'application' else basename
+
     src = "#{ @params.baseDir }/#{ @params.file }"
-    dst = "#{ @params.targetDir }/#{ dirname }/#{ basename }.js"
+    dst = "#{ @params.targetDir }/#{ dirname }/#{ dstName }.js"
 
     Future.call(fs.readFile, src, 'utf8').map (coffeeString) =>
       coffeeString = @preCompilerCallback(coffeeString) if @preCompilerCallback

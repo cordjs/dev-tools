@@ -5,6 +5,7 @@ packageInfo = require '../package.json'
 DEFAULT_OUTPUT_DIR = 'target'
 DEFAULT_CONFIG_NAME = 'default'
 DEFAULT_SERVER_PORT = 18180
+DEFAULT_APP_CONFIG = 'application'
 
 # getting version from the npm package definition
 program
@@ -27,6 +28,8 @@ program.withBuildOptions = (commandName) ->
                                   DEFAULT_OUTPUT_DIR + '"', DEFAULT_OUTPUT_DIR)
     .option('-d, --debug', 'development mode - copy all files to the outputDir')
     .option('-C, --clean', 'clean (remove) existing built files before starting new build')
+    .option('-A --app <file>', 'which application to build (name of config-file in public/app/). defaults to "' +
+                                  DEFAULT_APP_CONFIG + '"', DEFAULT_APP_CONFIG)
 
 exports.run = (actionCallbacks) ->
   ###

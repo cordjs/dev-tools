@@ -1,17 +1,18 @@
-path = require('path')
-fs = require('fs')
-requirejs = require('requirejs')
-{EventEmitter} = require('events')
-_ = require('underscore')
+path           = require 'path'
+fs             = require 'fs'
+requirejs      = require 'requirejs'
+{EventEmitter} = require 'events'
+_              = require 'underscore'
 
-Future = require('../utils/Future')
-rmrf = require('../utils/rmrf')
-fswalker = require '../utils/fswalker'
+Future    = require '../utils/Future'
+rmrf      = require '../utils/rmrf'
+fswalker  = require '../utils/fswalker'
+appConfig = require '../appConfig'
 
-buildManager = require('./BuildManager')
-BuildSession = require('./BuildSession')
-fileInfo = require('./FileInfo')
-ProjectWatcher = require('./ProjectWatcher')
+buildManager   = require './BuildManager'
+BuildSession   = require './BuildSession'
+fileInfo       = require './FileInfo'
+ProjectWatcher = require './ProjectWatcher'
 
 
 walkerFilter = (dir, name) ->
@@ -161,7 +162,7 @@ class ProjectBuilder extends EventEmitter
         nonWidgetFilesPromise.resolve()
 
 
-    appConfFile = 'public/app/application'
+    appConfFile = "public/app/#{@params.appConfigName}"
 
     appConfPromise = buildManager.createTask(
       "#{ appConfFile }.coffee", @params.baseDir, @params.targetDir,
@@ -179,17 +180,20 @@ class ProjectBuilder extends EventEmitter
     buildManager.createTask('server.coffee', @params.baseDir, @params.targetDir, fileInfo.getFileInfo('server.coffee'))
       .link(completePromise)
 
-    appConfPromise.done =>
+    appConfPromise.then =>
       scanCore()
       requirejs.config
         baseUrl: @params.targetDir
-      requirejs [appConfFile], (bundles) ->
-        fileInfo.setBundles(bundles)
-        for bundle in bundles
-          scanBundle(bundle)
-        widgetClassesPromise.resolve()
-        nonWidgetFilesPromise.resolve()
-        completePromise.resolve()
+      appConfig.getBundles(@params.targetDir)
+    .then (bundles) ->
+      fileInfo.setBundles(bundles)
+      for bundle in bundles
+        scanBundle(bundle)
+      widgetClassesPromise.resolve()
+      nonWidgetFilesPromise.resolve()
+      completePromise.resolve()
+      undefined
+    .failAloud()
 
     @_previousSessionPromise = completePromise.catch -> true
 

@@ -113,6 +113,7 @@ class FileInfo
             isCollection = ext == '.coffee' and fileWithoutExt.substr(-10) == 'Collection'
       else
         bundle = null
+        inApp = parts[1] == 'app'
 
     fileName: fileName
     ext: ext
@@ -124,6 +125,7 @@ class FileInfo
     inWidgets: inWidgets ? false
     inTemplates: inTemplates ? false
     inModels: inModels ? false
+    isAppConfig: inApp and lastDirName == 'app' and ext == '.coffee'
     isWidget: isWidget ? false
     isBehaviour: isBehaviour ? false
     isWidgetTemplate: isWidgetTemplate ? false

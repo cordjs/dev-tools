@@ -10,7 +10,6 @@ sha1   = require '../utils/sha1'
 browserInitGenerator = require './browserInitGenerator'
 CssOptimizer         = require './CssOptimizer'
 JsOptimizer          = require './JsOptimizer'
-requirejsConfig      = require './requirejsConfig'
 
 
 class Optimizer
