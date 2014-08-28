@@ -76,7 +76,7 @@ defineFuture = (_) ->
       if timeout > 0
         @_incompleteTimeout = setTimeout =>
           if @state() == 'pending' and @_counter > 0
-            _console.warn "Future timed out [#{@_name}] (#{timeout/1000} seconds), counter = #{@_counter}"
+            console.warn "Future timed out [#{@_name}] (#{timeout/1000} seconds), counter = #{@_counter}"
         , timeout
 
 
@@ -225,7 +225,7 @@ defineFuture = (_) ->
       ###
       name = @_name
       @fail (err) ->
-        _console.error "Future(#{name})::failAloud#{ if message then " with message: #{message}" else '' }", err
+        console.error "Future(#{name})::failAloud#{ if message then " with message: #{message}" else '' }", err
         throw err
 
 
@@ -738,13 +738,13 @@ defineFuture = (_) ->
       Can emphasise futures with desired names by using console.warn.
       ###
       if @_name.indexOf('desired search in name') != -1
-        fn = _console.warn
+        fn = console.warn
       else
-        fn = _console.log
+        fn = console.log
       args.unshift(@_name)
       args.unshift(@_doneCallbacks.length)
       args.unshift(@_counter)
-      fn.apply(_console, args)
+      fn.apply(console, args)
 
 
 module.exports = defineFuture(require('underscore'))
