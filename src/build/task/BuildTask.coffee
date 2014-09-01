@@ -1,5 +1,4 @@
 path = require('path')
-mkdirp = require('mkdirp')
 
 Future = require('../../utils/Future')
 
