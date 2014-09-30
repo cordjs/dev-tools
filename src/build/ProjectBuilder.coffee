@@ -7,7 +7,9 @@ _              = require 'underscore'
 Future    = require '../utils/Future'
 rmrf      = require '../utils/rmrf'
 fswalker  = require '../utils/fswalker'
-appConfig = require '../appConfig'
+
+appConfig       = require '../appConfig'
+requirejsConfig = require './task/requirejs-config'
 
 buildManager   = require './BuildManager'
 BuildSession   = require './BuildSession'
@@ -187,23 +189,36 @@ class ProjectBuilder extends EventEmitter
       appConfig.getBundles(@params.targetDir)
     .then (bundles) ->
       fileInfo.setBundles(bundles)
-      for bundle in bundles
-        scanBundle(bundle)
+      scanBundle(bundle) for bundle in bundles
       widgetClassesPromise.resolve()
       nonWidgetFilesPromise.resolve()
       completePromise.resolve()
-      undefined
+      return
     .failAloud()
 
-    @_previousSessionPromise = completePromise.catch -> true
+    fullCompletePromise =
+      if @params.indexPageWidget
+        requirejsConfig(@params.targetDir).then ->
+          Future.require('cord!requirejs/cord-w').zip(completePromise)
+        .then (cord) =>
+          info =
+            isIndexPage: true
+            configName: @params.config
+          buildManager.createTask(@params.indexPageWidget, @params.baseDir, @params.targetDir, info)
+      else
+        completePromise
 
-    completePromise.always (err) ->
-      diff = process.hrtime(start)
-      verb = if err then 'failed' else 'complete'
-      console.log "Build #{verb} in #{ (diff[0] * 1e9 + diff[1]) / 1e6 } ms"
-    .then =>
-      buildManager.stop()
-      @emit 'complete'
+    @_previousSessionPromise = fullCompletePromise.catch -> true
+
+    fullCompletePromise
+      .then -> 'complete'
+      .catch -> 'failed'
+      .then (verb) ->
+        diff = process.hrtime(start)
+        console.log "Build #{verb} in #{ (diff[0] * 1e9 + diff[1]) / 1e6 } ms"
+        if verb == 'complete'
+          buildManager.stop()
+          @emit 'complete'
 
 
   setupWatcher: ->

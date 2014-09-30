@@ -76,7 +76,7 @@ class BuildWorkerManager
       clearTimeout(@_killTimeout) if @_killTimeout
       taskWorkload = @getTaskWorkload(taskParams)
       @_workload += taskWorkload
-      @_tasks[taskParams.id].always =>
+      @_tasks[taskParams.id].finally =>
         @_workload -= taskWorkload
     else
       throw new Error("Can't accept task now!")

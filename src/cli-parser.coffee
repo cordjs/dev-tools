@@ -25,11 +25,17 @@ program.withBuildOptions = (commandName) ->
   ###
   @command(commandName)
     .option('-o, --out <dir>', 'output (target) directory relative to project root. defaults to "' +
-                                  DEFAULT_OUTPUT_DIR + '"', DEFAULT_OUTPUT_DIR)
-    .option('-d, --debug', 'development mode - copy all files to the outputDir')
-    .option('-C, --clean', 'clean (remove) existing built files before starting new build')
+                               DEFAULT_OUTPUT_DIR + '"', DEFAULT_OUTPUT_DIR)
+    .option('-C, --clean',
+      if commandName == 'optimize'
+        'clean existing optimized files before writing new ones'
+      else
+        'clean (remove) existing built files before starting new build'
+    )
     .option('-A --app <file>', 'which application to build (name of config-file in public/app/). defaults to "' +
-                                  DEFAULT_APP_CONFIG + '"', DEFAULT_APP_CONFIG)
+                               DEFAULT_APP_CONFIG + '"', DEFAULT_APP_CONFIG)
+    .option('-I --index <widget-path>', 'full path (in CordJS notation) of the widget to be rendered and saved ' +
+                                        'as index.html (example - "/ns/bundle//StartPage")')
 
 exports.run = (actionCallbacks) ->
   ###
@@ -41,6 +47,8 @@ exports.run = (actionCallbacks) ->
     .withBuildOptions('build')
     .description('build project')
     .option('-w, --watch', 'watch for changes in source files and rebuild them continuously')
+    .option('-c, --config <name>', 'configuration file name. used to generate useful index.html. defaults to "' +
+                                   DEFAULT_CONFIG_NAME + '"', DEFAULT_CONFIG_NAME)
     .action(actionCallbacks.build)
 
   program
@@ -59,11 +67,8 @@ exports.run = (actionCallbacks) ->
     .action(actionCallbacks.clean)
 
   program
-    .command('optimize')
+    .withBuildOptions('optimize')
     .description('optimize the build (group, merge, minify etc...))')
-    .option('-o, --out <dir>', 'output (target) directory relative to project root. defaults to "' +
-                               DEFAULT_OUTPUT_DIR + '"', DEFAULT_OUTPUT_DIR)
-    .option('-C, --clean', 'clean existing optimized files before writing new ones')
     .option('--disable-css', 'do not perform CSS group optimization. By default CSS optimization is enabled.')
     .option('--disable-css-minify', 'do not minify (via clean-css) merged CSS files. By default CSS minification is enabled.')
     .option('--disable-js', 'do not perform JS group optimization. By default JS optimization is enabled.')

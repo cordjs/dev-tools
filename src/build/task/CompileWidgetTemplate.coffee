@@ -9,7 +9,7 @@ class CompileWidgetTemplate extends BuildTask
   run: ->
     src = "#{ @params.baseDir }/#{ @params.file }"
 
-    requirejsConfig(@params).flatMap ->
+    requirejsConfig(@params.targetDir).flatMap ->
       Future.require('cord!compile/WidgetCompiler')
     .flatMap (WidgetCompiler) =>
       WidgetCompiler.compileWidgetTemplate(@_getWidgetCanonicalName(), src)

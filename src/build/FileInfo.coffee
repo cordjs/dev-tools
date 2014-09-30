@@ -1,7 +1,7 @@
 path = require('path')
 
 
-if path.sep == '\\' then sep = '\\\\' else sep = path.sep
+sep = if path.sep == '\\' then '\\\\' else path.sep
 # regexp: !test/.*/specs/.*\.coffee$!
 testSpecPathRegExp = new RegExp('test'+sep+'.*'+sep+'specs'+sep+'.*\\.coffee$')
 testObjectPathRegExp = new RegExp('test'+sep+'.*'+sep+'(page-objects|helpers)'+sep+'.*\\.coffee$')

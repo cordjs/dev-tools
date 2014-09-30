@@ -20,6 +20,7 @@ exports.main = ->
       ###
       handleChdir(options)
       buildOptions = normalizeBuildOptions(options)
+      buildOptions.config = options.config
       cleanFuture = if buildOptions.clean then commands.clean(options) else Future.resolved()
       cleanFuture.map ->
         builder = new ProjectBuilder(buildOptions)
@@ -72,9 +73,9 @@ normalizeBuildOptions = (options) ->
   baseDir: curDir
   targetDir: "#{curDir}/#{ if options.out then options.out else 'target'}"
   watch: !!options.watch
-  debug: !!options.debug
   clean: !!options.clean
   appConfigName: "#{ if options.app then options.app else 'application'}"
+  indexPageWidget: options.index
 
 
 normalizeServerOptions = (options) ->

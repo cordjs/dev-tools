@@ -7,18 +7,18 @@ pathToCore = 'bundles/cord/core'
 
 _requirejsReady = null
 
-module.exports = (task) ->
+module.exports = (targetDir) ->
   ###
   First call initiates cordjs framework requirejs configuration (paths and so on).
   Returns a future which completes when requirejs is configured.
   All subsequent calls returns the same future.
-  @param Object task params to take base and target directories from
+  @param String targetDir target directory from which requirejs configuration should be loaded
   @return Future[Nothing]
   ###
   if not _requirejsReady?
-    pathConfig = require "#{ path.join(task.targetDir, 'public', pathToCore) }/requirejs/pathConfig"
+    pathConfig = require "#{ path.join(targetDir, 'public', pathToCore) }/requirejs/pathConfig"
     requirejs.config
-      baseUrl: "#{ task.targetDir }/public"
+      baseUrl: "#{ targetDir }/public"
       nodeRequire: require
       paths: pathConfig
     _requirejsReady = Future.require('pathUtils').map (pathUtils) =>
