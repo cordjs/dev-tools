@@ -80,7 +80,7 @@ class ProjectBuilder extends EventEmitter
           next()
 
       walker.on 'end', ->
-        console.log "walker for dir #{ dir } completed!"
+        console.log "walker for dir #{ dir } completed!" if false
         completePromise.resolve()
       walker
 
@@ -211,12 +211,12 @@ class ProjectBuilder extends EventEmitter
     @_previousSessionPromise = fullCompletePromise.catch -> true
 
     fullCompletePromise
-      .then -> 'complete'
+      .then -> 'completed'
       .catch -> 'failed'
-      .then (verb) ->
+      .then (verb) =>
         diff = process.hrtime(start)
-        console.log "Build #{verb} in #{ (diff[0] * 1e9 + diff[1]) / 1e6 } ms"
-        if verb == 'complete'
+        console.log "Build #{verb} in #{ parseFloat((diff[0] * 1e9 + diff[1]) / 1e9).toFixed(3) } s"
+        if verb == 'completed'
           buildManager.stop()
           @emit 'complete'
 
@@ -225,6 +225,7 @@ class ProjectBuilder extends EventEmitter
     @watcher = new ProjectWatcher(@params.baseDir)
     @watcher.on 'change', (changes) =>
       if not @_emitCompletePromise?
+        console.log '====================='
         @_emitCompletePromise = new Future
         @_emitCompletePromise.fork()
         @_emitCompletePromise.done =>
@@ -259,7 +260,7 @@ class ProjectBuilder extends EventEmitter
               next()
 
             walker.on 'end', ->
-              console.log "walker for dir #{ dir } completed!"
+              console.log "walker for dir #{ dir } completed!" if false
               result.resolve()
 
             result

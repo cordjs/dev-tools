@@ -68,7 +68,7 @@ class BuildManager
 
   @stopWorker: (worker) ->
     @workers = _.without(@workers, worker)
-    console.log "Worker #{ worker.id } stopped. Total tasks count: #{ worker.totalTasksCount }"
+    console.log "Worker #{ worker.id } stopped. Total tasks count: #{ worker.totalTasksCount }" if false
 
 
 

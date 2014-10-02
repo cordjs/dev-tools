@@ -22,7 +22,7 @@ exports.main = ->
       buildOptions = normalizeBuildOptions(options)
       buildOptions.config = options.config
       cleanFuture = if buildOptions.clean then commands.clean(options) else Future.resolved()
-      cleanFuture.map ->
+      cleanFuture.then ->
         builder = new ProjectBuilder(buildOptions)
         builder.build().fail ->
           process.exit(1) if not buildOptions.watch
@@ -37,7 +37,8 @@ exports.main = ->
         serverOptions = normalizeServerOptions(options)
         serverProcessManager = new ServerProcessManager(_.extend(buildOptions, serverOptions))
         builder.on 'complete', ->
-          console.log "build complete. restarting..."
+          console.log 'Restarting...'
+          console.log '---------------------'
           serverProcessManager.restart()
 
 

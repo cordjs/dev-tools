@@ -53,13 +53,13 @@ class BuildWorkerManager
         , BuildWorkerManager.IDLE_STOP_TIMEOUT
 
     @_process.on 'exit', (code, signal) ->
-      console.log "Process 'exit' with params", code, signal
+      console.log "Process 'exit' with params", code, signal if false
 
     @_process.on 'error', (err) ->
       console.log "Process 'error'", err
 
     @_process.on 'close', (code, signal) ->
-      console.log "Process 'close' with params", code, signal
+      console.log "Process 'close' with params", code, signal if false
 
 
   addTask: (taskParams) ->
