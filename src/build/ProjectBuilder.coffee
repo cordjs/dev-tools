@@ -198,7 +198,9 @@ class ProjectBuilder extends EventEmitter
 
     fullCompletePromise =
       if @params.indexPageWidget
-        requirejsConfig(@params.targetDir).then ->
+        corePromise.then =>
+          requirejsConfig(@params.targetDir)
+        .then ->
           Future.require('cord!requirejs/cord-w').zip(completePromise)
         .then (cord) =>
           info =
