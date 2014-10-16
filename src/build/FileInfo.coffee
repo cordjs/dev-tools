@@ -133,6 +133,7 @@ class FileInfo
     isCollection: isCollection ? false
     isCoffee: ext == '.coffee'
     isHtml: ext == '.html'
+    isVdom: (ext == '.html' and path.extname(fileWithoutExt) == '.vdom')
     isStylus: ext == '.styl'
     isTestSpec: file.match(testSpecPathRegExp)?
     isTestObject: file.match(testObjectPathRegExp)?

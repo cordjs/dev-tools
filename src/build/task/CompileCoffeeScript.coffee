@@ -36,7 +36,7 @@ class CompileCoffeeScript extends BuildTask
         js = js.replace("return #{name};\n", "#{name}.__name = '#{name}';\n\n   return #{name};\n")
       js = @postCompilerCallback(js) if @postCompilerCallback?
       js
-    .zip(Future.call(mkdirp, path.dirname(dst))).flatMap (jsString) =>
+    .zip(Future.call(mkdirp, path.dirname(dst))).flatMap (jsString) ->
       Future.call(fs.writeFile, dst, jsString)
     .flatMapFail (err) ->
       if err instanceof SyntaxError and err.location?

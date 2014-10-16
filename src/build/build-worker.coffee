@@ -8,6 +8,7 @@ _ = require 'underscore'
 CompileCoffeeScript   = require './task/CompileCoffeeScript'
 CompileStylus         = require './task/CompileStylus'
 CompileWidgetTemplate = require './task/CompileWidgetTemplate'
+CompileTemplateToVdom = require './task/CompileTemplateToVdom'
 Fake                  = require './task/Fake'
 CopyFile              = require './task/CopyFile'
 CompileTestSpec       = require './task/CompileTestSpec'
@@ -49,6 +50,7 @@ class BuildWorker
     else if info.isCoffee then CompileCoffeeScript
     else if info.isStylus then CompileStylus
     else if info.isWidgetTemplate then CompileWidgetTemplate
+    else if info.isVdom then CompileTemplateToVdom
     else if info.isIndexPage then RenderIndexHtml
     else if info.ext == '.orig' or info.ext.substr(-1) == '~' then Fake
     else CopyFile
