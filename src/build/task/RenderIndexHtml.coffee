@@ -25,7 +25,11 @@ class RenderIndexHtml extends BuildTask
     global.config    = config.node
     global.CORD_PROFILER_ENABLED = config.node.debug.profiler.enable
 
-    requirejsConfig(@params.targetDir).then ->
+    Future.call(fs.readFile, path.join(@params.targetDir, 'public/assets/z/browser-init.id'), 'utf8').then (id) ->
+      global.config.browserInitScriptId = id
+    .catch ->
+      true
+    .zip(requirejsConfig(@params.targetDir)).then ->
       Future.require('cord!utils/DomInfo', 'cord!ServiceContainer', 'cord!WidgetRepo')
     .then (DomInfo, ServiceContainer, WidgetRepo) =>
       # initializing core CordJS services
