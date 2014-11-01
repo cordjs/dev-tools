@@ -26,7 +26,7 @@ class CompileTemplateToVdom extends BuildTask
       console.log "---------------------------------------------"
       console.log hyperscript
       console.log "---------------------------------------------"
-      "define(['virtual-hyperscript'],function(h){ return function(){ return #{hyperscript};};});"
+      "define(['cord!vdom/vhyperscript/h'],function(h){ return function(){ return #{hyperscript};};});"
     .zip(Future.call(mkdirp, path.dirname(dst))).then (vdomJs) =>
       Future.call(fs.writeFile, dst, vdomJs)
     .link(@readyPromise)
