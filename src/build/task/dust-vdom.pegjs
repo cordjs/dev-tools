@@ -16,7 +16,7 @@ body
    part is defined as anything that matches with raw or comment or section or partial or special or reference or buffer
 ---------------------------------------------------------------------------------------------------------------------------------------*/
 part
-  = html_tag / ws //raw / comment / section / partial / special / reference / buffer
+  = html_tag / ws / plain_text //raw / comment / section / partial / special / reference / buffer
 
 html_tag
   = s:html_tag_start b:body e:html_tag_end? &{
@@ -50,6 +50,20 @@ key "key"
   { return h + t.join(''); }
 
 
+plain_text "plain text as is"
+  = b:(!any_tag !eol c:. {return c})+
+  {
+    console.log('plain text', b);
+    return {
+      type: 'text',
+      text: b.join(''),
+      line: line(),
+      column: column()
+    };
+  }
+
+any_tag
+  = lt ws* '/'? ws* (!gt !eol .)+ ws* gt
 
 lt
   = '<'

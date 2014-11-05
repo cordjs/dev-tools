@@ -45,6 +45,9 @@ astToHyperscript = (ast, indent = 1) ->
           contentsStr = astToHyperscript(node.contents, indent + 1) if node.contents
           contentsStr = ', ' + contentsStr if contentsStr
           "\n#{indentPrefix}h('#{node.name}'#{contentsStr})"
+
+        when 'text'
+          "\n#{indentPrefix}'#{node.text}'"
   result = ''
   result = '[' + chunks.join(',') + "\n" + prevIndentPrefix + ']' if ast.length
   result
