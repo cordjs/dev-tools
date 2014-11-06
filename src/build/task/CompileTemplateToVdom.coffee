@@ -26,7 +26,7 @@ class CompileTemplateToVdom extends BuildTask
       console.log "---------------------------------------------"
       console.log hyperscript
       console.log "---------------------------------------------"
-      "define(['cord!vdom/vhyperscript/h'],function(h){ return function(){ return #{hyperscript};};});"
+      "define(['cord!vdom/vhyperscript/h'],function(h){ return function(props, state, calc){ return #{hyperscript};};});"
     .zip(Future.call(mkdirp, path.dirname(dst))).then (vdomJs) =>
       Future.call(fs.writeFile, dst, vdomJs)
     .link(@readyPromise)
@@ -48,6 +48,10 @@ astToHyperscript = (ast, indent = 1) ->
 
         when 'text'
           "\n#{indentPrefix}'#{node.text}'"
+
+        when 'expr'
+          "\n#{indentPrefix}String(#{node.code})"
+
   result = ''
   result = '[' + chunks.join(',') + "\n" + prevIndentPrefix + ']' if ast.length
   result
