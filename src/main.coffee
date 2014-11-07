@@ -22,7 +22,7 @@ exports.main = ->
       buildOptions = normalizeBuildOptions(options)
       buildOptions.config = options.config
       cleanFuture = if buildOptions.clean then commands.clean(options) else Future.resolved()
-      cleanFuture.then ->
+      cleanFuture.failAloud().then ->
         builder = new ProjectBuilder(buildOptions)
         builder.build().fail ->
           process.exit(1) if not buildOptions.watch

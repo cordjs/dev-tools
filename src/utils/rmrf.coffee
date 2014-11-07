@@ -10,7 +10,7 @@ rmrf = (target) ->
   @return Future
   ###
   if target.charAt(0) == '/' and target.trim().length > 5
-    Future.call(fs.stat, target).flatMap (stat) ->
+    Future.call(fs.lstat, target).flatMap (stat) ->
       if stat.isDirectory()
         Future.call(fs.readdir, target).flatMap (items) ->
           futures = (rmrf(path.join(target, item)) for item in items)
