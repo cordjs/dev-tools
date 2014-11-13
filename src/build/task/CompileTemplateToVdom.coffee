@@ -20,10 +20,13 @@ class CompileTemplateToVdom extends BuildTask
 
     Future.call(fs.readFile, src, 'utf8').then (dustString) =>
       ast = dustVdom.parse(dustString)
-      hyperscript = astToHyperscript(ast)
       console.log "----------------VDOM-------------------------"
       console.log JSON.stringify(ast, null, 2)
       console.log "---------------------------------------------"
+      if ast.length > 1
+        console.warn "Only single root node is allowed for the widget! Using only first of #{ast.length}! [#{src}]"
+        ast = [ast[0]]
+      hyperscript = astToHyperscript(ast)
       console.log hyperscript
       console.log "---------------------------------------------"
       "define(['cord!vdom/vhyperscript/h'],function(h){ return function(props, state, calc){ return #{hyperscript};};});"
@@ -34,9 +37,9 @@ class CompileTemplateToVdom extends BuildTask
 
 
 
-astToHyperscript = (ast, indent = 1) ->
+astToHyperscript = (ast, indent = 0) ->
   indentPrefix = (new Array(indent * 2 + 1)).join(' ')
-  prevIndentPrefix = (new Array((indent - 1) * 2 + 1)).join(' ')
+  prevIndentPrefix = if indent > 0 then (new Array((indent - 1) * 2 + 1)).join(' ') else ''
   chunks =
     for node in ast
       switch node.type
@@ -44,7 +47,9 @@ astToHyperscript = (ast, indent = 1) ->
           contentsStr = ''
           contentsStr = astToHyperscript(node.contents, indent + 1) if node.contents
           contentsStr = ', ' + contentsStr if contentsStr
-          "\n#{indentPrefix}h('#{node.name}'#{contentsStr})"
+          idStr = if indent == 0 then "+'#'+props.id" else ''
+          indentStr = if indent == 0 then '' else "\n#{indentPrefix}"
+          "#{indentStr}h('#{node.name}'#{idStr}#{contentsStr})"
 
         when 'text'
           "\n#{indentPrefix}'#{node.text}'"
@@ -52,9 +57,12 @@ astToHyperscript = (ast, indent = 1) ->
         when 'expr'
           "\n#{indentPrefix}String(#{node.code})"
 
-  result = ''
-  result = '[' + chunks.join(',') + "\n" + prevIndentPrefix + ']' if ast.length
-  result
+  if ast.length > 1
+    '[' + chunks.join(',') + "\n" + prevIndentPrefix + ']'
+  else if ast.length == 1
+    chunks[0]
+  else
+    ''
 
 
 module.exports = CompileTemplateToVdom

@@ -88,11 +88,11 @@ rd
   = "}"
 
 eol
-  = "\n"        //line feed
-  / "\r\n"      //carriage + line feed
-  / "\r"        //carriage return
-  / "\u2028"    //line separator
-  / "\u2029"    //paragraph separator
+  = "\n"     { return undefined; }   //line feed
+  / "\r\n"   { return undefined; }   //carriage + line feed
+  / "\r"     { return undefined; }   //carriage return
+  / "\u2028" { return undefined; }   //line separator
+  / "\u2029" { return undefined; }   //paragraph separator
 
 ws
   = [\t\v\f \u00A0\uFEFF] { return undefined; }
