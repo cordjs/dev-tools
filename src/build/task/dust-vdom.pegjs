@@ -19,7 +19,7 @@ part
   = html_tag / eol / plain_text / js_expr //raw / comment / section / partial / special / reference / buffer
 
 html_tag
-  = s:html_tag_start b:body e:html_tag_end? &{
+  = s:html_tag_start gt b:body e:html_end_tag? &{
     if( (!e) || (s !== e) ) {
       error("Expected end tag for "+s+" but it was not found.");
     }
@@ -33,13 +33,20 @@ html_tag
       line: line(),
       column: column()
     };
-    // return ['html_tag', e, b, [line(), column()]]
+  }
+  / s:html_tag_start '/' gt {
+    return {
+      type: 'html_tag',
+      name: s,
+      line: line(),
+      column: column()
+    };
   }
 
 html_tag_start
-  = lt n:key gt { return n; }
+  = lt n:key { return n; }
 
-html_tag_end
+html_end_tag
   = lt '/' n:key gt { return n; }
 
 /*-------------------------------------------------------------------------------------------------------------------------------------
