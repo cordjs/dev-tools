@@ -40,6 +40,7 @@ class CompileTemplateToVdom extends BuildTask
 astToHyperscript = (ast, indent = 0) ->
   indentPrefix = (new Array(indent * 2 + 1)).join(' ')
   prevIndentPrefix = if indent > 0 then (new Array((indent - 1) * 2 + 1)).join(' ') else ''
+  childIndent = if ast.length > 1 then "\n#{indentPrefix}" else ''
   chunks =
     for node in ast
       switch node.type
@@ -48,14 +49,13 @@ astToHyperscript = (ast, indent = 0) ->
           contentsStr = astToHyperscript(node.contents, indent + 1) if node.contents
           contentsStr = ', ' + contentsStr if contentsStr
           idStr = if indent == 0 then "+'#'+props.id" else ''
-          indentStr = if indent == 0 then '' else "\n#{indentPrefix}"
-          "#{indentStr}h('#{node.name}'#{idStr}#{contentsStr})"
+          "#{childIndent}h('#{node.name}'#{idStr}#{contentsStr})"
 
         when 'text'
-          "\n#{indentPrefix}'#{node.text}'"
+          "#{childIndent}'#{node.text}'"
 
         when 'expr'
-          "\n#{indentPrefix}String(#{node.code})"
+          "#{childIndent}String(#{node.code})"
 
   if ast.length > 1
     '[' + chunks.join(',') + "\n" + prevIndentPrefix + ']'
