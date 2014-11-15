@@ -49,20 +49,35 @@ astToHyperscript = (ast, indent = 0) ->
           contentsStr = astToHyperscript(node.contents, indent + 1) if node.contents
           contentsStr = ', ' + contentsStr if contentsStr
           idStr = if indent == 0 then "+'#'+props.id" else ''
-          "#{childIndent}h('#{node.name}'#{idStr}#{contentsStr})"
+          "h('#{node.name}'#{idStr}#{contentsStr})"
 
         when 'text'
-          "#{childIndent}'#{node.text}'"
+          "'#{node.text}'"
 
         when 'expr'
-          "#{childIndent}String(#{node.code})"
+          "String(#{node.code})"
 
-  if ast.length > 1
-    '[' + chunks.join(',') + "\n" + prevIndentPrefix + ']'
-  else if ast.length == 1
+  chunks = mergeTextChunks(chunks, ast)
+
+  if chunks.length > 1
+    "[#{childIndent}#{chunks.join(',' + childIndent)}\n#{prevIndentPrefix}]"
+  else if chunks.length == 1
     chunks[0]
   else
     ''
+
+
+mergeTextChunks = (chunks, ast) ->
+  result = []
+  prevVtext = false
+  for node, i in ast
+    curVtext = node.type in ['text', 'expr']
+    if curVtext and prevVtext
+      result[result.length - 1] += ' + ' + chunks[i]
+    else
+      result.push(chunks[i])
+    prevVtext = curVtext
+  result
 
 
 module.exports = CompileTemplateToVdom
