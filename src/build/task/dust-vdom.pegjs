@@ -20,8 +20,9 @@ part
 
 html_tag
   = s:html_tag_start gt b:body e:html_end_tag? &{
-    if( (!e) || (s !== e) ) {
-      error("Expected end tag for "+s+" but it was not found.");
+    console.log("html_tag", s, b, e);
+    if( (!e) || (s.name !== e) ) {
+      error("Expected end tag for "+s.name+" but it was not found.");
     }
     return true;
   }
@@ -30,6 +31,7 @@ html_tag
       type: 'html_tag',
       name: e,
       contents: b,
+      props: s.props,
       line: line(),
       column: column()
     };
@@ -37,17 +39,54 @@ html_tag
   / s:html_tag_start '/' gt {
     return {
       type: 'html_tag',
-      name: s,
+      name: s.name,
+      props: s.props,
       line: line(),
       column: column()
     };
   }
 
 html_tag_start
-  = lt n:key { return n; }
+  = lt n:key p:props
+  {
+    return {
+      name: n,
+      props: p
+    };
+  }
 
 html_end_tag
   = lt '/' n:key gt { return n; }
+
+props
+  = p:(ws+ k:key "=" v:(js_expr / inline) {
+    console.log("props", k, v);
+    return { name: k, value: v, line: line(), column: column() };
+  })*
+//  { return ["params"].concat(p) }
+//  = p:(ws+ k:key "=" v:(number / identifier / inline) { return ["param", ["literal", k], v]})*
+
+/*-------------------------------------------------------------------------------------------------------------------------------------
+   inline params is defined as matching two double quotes or double quotes plus literal followed by closing double quotes or
+   double quotes plus inline_part followed by the closing double quotes
+---------------------------------------------------------------------------------------------------------------------------------------*/
+inline "inline"
+  = '"' '"'                 { return ""; }
+  / '"' l:literal '"'       { return l; }
+//  / '"' p:inline_part+ '"'  { return ["body"].concat(p).concat([['line', line()], ['col', column()]]) }
+
+/*-------------------------------------------------------------------------------------------------------------------------------------
+   literal is defined as matching esc or any character except the double quotes and it cannot be a tag
+---------------------------------------------------------------------------------------------------------------------------------------*/
+literal "literal"
+  = b:(!any_tag c:(esc / [^"]) {return c})+
+  {
+    console.log("literal", b.join(''));
+    return b.join('')
+  }
+
+esc
+  = '\\"' { return '"' }
 
 /*-------------------------------------------------------------------------------------------------------------------------------------
    key is defined as a character matching a to z, upper or lower case, followed by 0 or more alphanumeric characters
@@ -67,10 +106,10 @@ js_expr "Javascript Expression"
     };
   }
 
-
 plain_text "plain text as is"
   = b:(!any_tag !js_expr c:. {return c})+
   {
+    console.log("plain_text", b.join(''));
     return {
       type: 'text',
       text: b.join(''),

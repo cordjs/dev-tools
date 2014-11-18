@@ -1,6 +1,7 @@
 fs     = require 'fs'
 path   = require 'path'
 mkdirp = require 'mkdirp'
+_      = require 'underscore'
 
 Future = require '../../utils/Future'
 
@@ -48,8 +49,11 @@ astToHyperscript = (ast, indent = 0) ->
           contentsStr = ''
           contentsStr = astToHyperscript(node.contents, indent + 1) if node.contents
           contentsStr = ', ' + contentsStr if contentsStr
+
+          propsStr = propsToHyperscript(node.props, indent)
+
           idStr = if indent == 0 then "+'#'+props.id" else ''
-          "h('#{node.name}'#{idStr}#{contentsStr})"
+          "h('#{node.name}'#{idStr}#{propsStr}#{contentsStr})"
 
         when 'text'
           "'#{node.text}'"
@@ -78,6 +82,33 @@ mergeTextChunks = (chunks, ast) ->
       result.push(chunks[i])
     prevVtext = curVtext
   result
+
+
+propsToHyperscript = (props, indent = 0) ->
+  return '' if not props or props.length == 0
+  chunks =
+    for propInfo in props
+      value =
+        if _.isString(propInfo.value)
+          "'#{propInfo.value}'"
+        else if _.isObject(propInfo.value)
+          switch propInfo.value.type
+            when 'expr' then propInfo.value.code
+            else
+              throw new Error("Invalid prop value type '#{propInfo.value.type}'!")
+        else
+          throw new Error("Invalid prop info type parsed: #{propInfo}!")
+      "#{propInfo.name}: #{value}"
+
+  pairs =
+    if chunks.length > 1
+      indentStr = "\n" + (new Array((indent + 1) * 2 + 1)).join(' ')
+      prevIndentPrefix = (new Array(indent * 2 + 1)).join(' ')
+      "#{indentStr}#{chunks.join(',' + indentStr)}\n#{prevIndentPrefix}"
+    else
+      " #{chunks[0]} "
+  ", {#{pairs}}"
+
 
 
 module.exports = CompileTemplateToVdom
