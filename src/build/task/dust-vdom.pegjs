@@ -96,8 +96,9 @@ key "key"
   { return h + t.join(''); }
 
 js_expr "Javascript Expression"
-  = ld e:(!rd c:. {return c})+ rd
+  = ld e:(nested:js_expr{ return '{'+nested.code+'}'} / !rd c:. {return c})+ rd
   {
+    console.log('js_expr', e.join(''));
     return {
       type: 'expr',
       code: e.join(''),
@@ -105,6 +106,7 @@ js_expr "Javascript Expression"
       column: column()
     };
   }
+
 
 plain_text "plain text as is"
   = b:(!any_tag !js_expr c:. {return c})+
