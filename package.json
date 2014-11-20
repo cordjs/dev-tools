@@ -16,6 +16,7 @@
     "commander":        ">=2.0.0",
     "dustjs-linkedin":  "=2.3.2",
     "dustjs-helpers":   "=1.1.2",
+    "eventemitter3":    "=0.1.5",
     "lodash":           "=2.2.1",
     "mkdirp":           ">=0.3.5",
     "moment":           ">=1.7.2",
@@ -24,6 +25,7 @@
     "postal":           "=0.7.3",
     "requirejs":        "=2.1.8",
     "stylus":           "=0.41.3",
+    "the-box":          "=0.0.1",
     "uglify-js":        ">=2.4.14",
     "underscore":       "=1.4.3"
   },
