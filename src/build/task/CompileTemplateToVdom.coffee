@@ -27,10 +27,15 @@ class CompileTemplateToVdom extends BuildTask
       if ast.length > 1
         console.warn "Only single root node is allowed for the widget! Using only first of #{ast.length}! [#{src}]"
         ast = [ast[0]]
-      hyperscript = astToHyperscript(ast)
+      hyperscript = astToHyperscript(ast, 1)
       console.log hyperscript
       console.log "---------------------------------------------"
-      "define(['cord!vdom/vhyperscript/h'],function(h){ return function(props, state, calc){ return #{hyperscript};};});"
+      """
+      define(['cord!vdom/vhyperscript/h'],function(h){
+        var w = h.w;
+        return function(props, state, calc){ return #{hyperscript}; };
+      });
+      """
     .zip(Future.call(mkdirp, path.dirname(dst))).then (vdomJs) =>
       Future.call(fs.writeFile, dst, vdomJs)
     .link(@readyPromise)
@@ -46,14 +51,17 @@ astToHyperscript = (ast, indent = 0) ->
     for node in ast
       switch node.type
         when 'html_tag'
-          contentsStr = ''
-          contentsStr = astToHyperscript(node.contents, indent + 1) if node.contents
-          contentsStr = ', ' + contentsStr if contentsStr
+          if node.name == 'widget'
+            compileWidget(node, indent)
+          else
+            contentsStr = ''
+            contentsStr = astToHyperscript(node.contents, indent + 1) if node.contents
+            contentsStr = ', ' + contentsStr if contentsStr
 
-          propsStr = propsToHyperscript(node.props, indent)
+            propsStr = propsToHyperscript(node.props, indent)
 
-          idStr = if indent == 0 then "+'#'+props.id" else ''
-          "h('#{node.name}'#{idStr}#{propsStr}#{contentsStr})"
+            idStr = if indent == 0 then "+'#'+props.id" else ''
+            "h('#{node.name}'#{idStr}#{propsStr}#{contentsStr})"
 
         when 'text'
           "'#{node.text}'"
@@ -69,6 +77,33 @@ astToHyperscript = (ast, indent = 0) ->
     chunks[0]
   else
     ''
+
+compileWidget = (node, indent = 0) ->
+  contentsStr = ''
+  contentsStr = astToHyperscript(node.contents, indent + 1) if node.contents
+  contentsStr = ', ' + contentsStr if contentsStr
+
+  for prop, i in node.props
+    if prop.name == 'type'
+      type = compilePropValue(prop.value)
+      node.props.splice(i, 1)
+      break
+
+  propsStr = propsToHyperscript(node.props, indent)
+
+  "w(#{type}#{propsStr}#{contentsStr})"
+
+
+compilePropValue = (propValue) ->
+  if _.isString(propValue)
+    "'#{propValue}'"
+  else if _.isObject(propValue)
+    switch propValue.type
+      when 'expr' then propValue.code
+      else
+        throw new Error("Invalid prop value type '#{propValue.type}'!")
+  else
+    throw new Error("Invalid prop value type parsed: #{propValue}!")
 
 
 mergeTextChunks = (chunks, ast) ->
@@ -88,16 +123,7 @@ propsToHyperscript = (props, indent = 0) ->
   return '' if not props or props.length == 0
   chunks =
     for propInfo in props
-      value =
-        if _.isString(propInfo.value)
-          "'#{propInfo.value}'"
-        else if _.isObject(propInfo.value)
-          switch propInfo.value.type
-            when 'expr' then propInfo.value.code
-            else
-              throw new Error("Invalid prop value type '#{propInfo.value.type}'!")
-        else
-          throw new Error("Invalid prop info type parsed: #{propInfo}!")
+      value = compilePropValue(propInfo.value)
       "#{propInfo.name}: #{value}"
 
   pairs =
