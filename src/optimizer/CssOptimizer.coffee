@@ -137,7 +137,7 @@ class CssOptimizer
       console.log "Saving #{fileName}.css ..."
       Future.call(fs.writeFile, "#{@_zDir}/#{fileName}.css", mergedContent).map ->
         [fileName, existingFiles]
-    .failAloud()
+    .failAloud('CssOptimizer::_mergeGroup')
 
 
   _reorderGroupFiles: (cssFiles) ->

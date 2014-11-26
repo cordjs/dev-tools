@@ -26,10 +26,10 @@ class ByWidgetGroupDetector
     @param String target absolute path to the file/directory to be removed
     @return Future
     ###
-    Future.call(fs.stat, target).flatMap (stat) =>
+    Future.call(fs.stat, target).then (stat) =>
       if stat.isDirectory()
         @_widgetGroups[target.substr(target.indexOf('/bundles/') + 1)] = []
-        Future.call(fs.readdir, target).flatMap (items) =>
+        Future.call(fs.readdir, target).then (items) =>
           futures = (@_processDir(path.join(target, item)) for item in items)
           Future.sequence(futures)
       else if path.extname(target) == '.js'
@@ -42,11 +42,12 @@ class ByWidgetGroupDetector
 
 
   process: (stat) ->
-    appConfig.getBundles(@targetDir).flatMap (bundles) =>
+    appConfig.getBundles(@targetDir).then (bundles) =>
       futures = for bundle in bundles
         @_processDir(path.join(@targetDir, 'public/bundles', bundle, 'widgets'))
+          .catchIf (err) -> err.code == 'ENOENT' # the bundle may not have 'widgets' folder
       Future.sequence(futures)
-    .map =>
+    .then =>
       resultGroups = []
       for gr, items of @_widgetGroups
         if items.length > 1
@@ -63,7 +64,7 @@ class ByWidgetGroupDetector
         optimizedStat[page] = modules
 
       optimizedStat
-    .failAloud()
+    .failAloud('ByWidgetGroupDetector::processing')
 
 
   _generateGroupId: (items, groupDir) ->

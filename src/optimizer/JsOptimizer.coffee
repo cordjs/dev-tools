@@ -187,7 +187,7 @@ class JsOptimizer
       console.log "Saving #{fileName}.js ..."
       Future.call(fs.writeFile, "#{@_zDir}/#{ fileName }.js", mergedContent).map ->
         [fileName, existingModules]
-    .failAloud()
+    .failAloud('JsOptimizer::_mergeGroup')
 
 
   _generateShimExportsFn: (shimConfig) ->
