@@ -1,7 +1,7 @@
 {
   "name":       "cordjs",
   "keywords":   ["cordjs", "framework"],
-  "version":    "0.3.2",
+  "version":    "0.3.3",
   "directories": {
     "lib":    "./lib"
   },
@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "amdefine":         "=0.0.8",
+    "bcryptjs":         "~2.0.2",
     "clean-css":        "=2.0.8",
     "coffee-script":    ">=1.7.1",
     "commander":        ">=2.0.0",
