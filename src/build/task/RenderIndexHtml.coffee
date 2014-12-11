@@ -1,5 +1,6 @@
 fs   = require 'fs'
 path = require 'path'
+requirejs = require 'requirejs'
 
 Future = require '../../utils/Future'
 
@@ -30,19 +31,33 @@ class RenderIndexHtml extends BuildTask
     .catch ->
       true
     .zip(requirejsConfig(@params.targetDir)).then ->
-      Future.require('cord!utils/DomInfo', 'cord!ServiceContainer', 'cord!WidgetRepo')
-    .then (DomInfo, ServiceContainer, WidgetRepo) =>
+      Future.require('cord!AppConfigLoader', 'cord!utils/DomInfo', 'cord!ServiceContainer', 'cord!WidgetRepo')
+    .then (AppConfigLoader, DomInfo, ServiceContainer, WidgetRepo) =>
       # initializing core CordJS services
       container = new ServiceContainer
       container.set('container', container)
+      container.set('config', {})
+      container.set('appConfig', {})
       widgetRepo = new WidgetRepo
       widgetRepo.setServiceContainer(container)
 
-      # rendering the given widget to save as index.html
-      widgetRepo.createWidget(@params.file).then (rootWidget) ->
-        rootWidget._isExtended = true
-        widgetRepo.setRootWidget(rootWidget)
-        rootWidget.show({}, DomInfo.fake())
+      AppConfigLoader.ready().then (appConfig) =>
+        appConfig.services.cookie =
+          deps: ['container']
+          factory: (get, done) ->
+            requirejs ['cord!/cord/core/cookie/LocalCookie'], (Cookie) =>
+              done(null, new Cookie(get('container')))
+
+        for serviceName, info of appConfig.services
+          do (info) ->
+            container.def serviceName, info.deps, (get, done) ->
+              info.factory.call(container, get, done)
+
+        # rendering the given widget to save as index.html
+        widgetRepo.createWidget(@params.file).then (rootWidget) ->
+          rootWidget._isExtended = true
+          widgetRepo.setRootWidget(rootWidget)
+          rootWidget.show({}, DomInfo.fake())
     .then (out) ->
       Future.call(fs.writeFile, dst, out)
     .link(@readyPromise)
