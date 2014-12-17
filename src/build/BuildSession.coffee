@@ -1,6 +1,7 @@
-fs = require('fs')
-path = require('path')
-requirejs = require('requirejs')
+fs   = require 'fs'
+path = require 'path'
+
+requirejs = require process.cwd() + '/node_modules/requirejs'
 
 Future = require('../utils/Future')
 

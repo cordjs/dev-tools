@@ -693,7 +693,7 @@ defineFuture = (_) ->
       ###
       paths = paths[0] if paths.length == 1 and _.isArray(paths[0])
       result = @single(':require:('+ paths.join(', ') + ')')
-      requirejs = require('requirejs')
+      requirejs = require(process.cwd() + '/node_modules/requirejs')
       requirejs paths, (modules...) ->
         try
           result.resolve.apply(result, modules)

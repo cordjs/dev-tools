@@ -1,10 +1,11 @@
 path      = require 'path'
-requirejs = require 'requirejs'
+
+requirejs = require process.cwd() + '/node_modules/requirejs'
 
 Future = require './utils/Future'
 
 
-appConfFile    = 'app/application'
+appConfFile = 'app/application'
 
 savedBundlesFuture = null
 
@@ -20,7 +21,7 @@ exports.getBundles = (targetDir) ->
     requirejs.config
       baseUrl: path.join(targetDir, 'public')
 
-    savedBundlesFuture = Future.require(appConfFile).map (bundles) ->
+    savedBundlesFuture = Future.require(appConfFile).then (bundles) ->
       [['cord/core'].concat(bundles)] # core is always enabled
 
     savedBundlesFuture

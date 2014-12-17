@@ -1,8 +1,9 @@
 path           = require 'path'
 fs             = require 'fs'
-requirejs      = require 'requirejs'
 {EventEmitter} = require 'events'
 _              = require 'underscore'
+
+requirejs = require process.cwd() + '/node_modules/requirejs'
 
 Future    = require '../utils/Future'
 rmrf      = require '../utils/rmrf'
