@@ -1,7 +1,7 @@
 {
   "name":       "cordjs",
   "keywords":   ["cordjs", "framework"],
-  "version":    "0.3.6",
+  "version":    "0.3.7",
   "directories": {
     "lib":    "./lib"
   },
@@ -24,7 +24,7 @@
     "monologue.js":     "=0.1.1",
     "nib":              ">=1.0.1",
     "postal":           "=0.7.3",
-    "request":          "=2.51.1",
+    "request":          "=2.51.0",
     "requirejs":        "=2.1.8",
     "stylus":           "=0.41.3",
     "the-box":          "=0.0.1",
