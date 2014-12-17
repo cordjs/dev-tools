@@ -1,7 +1,7 @@
 {
   "name":       "cordjs",
   "keywords":   ["cordjs", "framework"],
-  "version":    "0.3.3",
+  "version":    "0.3.4",
   "directories": {
     "lib":    "./lib"
   },
@@ -28,7 +28,7 @@
     "stylus":           "=0.41.3",
     "the-box":          "=0.0.1",
     "uglify-js":        ">=2.4.14",
-    "underscore":       "=1.4.3"
+    "underscore":       "=1.7.0"
   },
   "engines": {
     "node":   ">=0.10.21"
