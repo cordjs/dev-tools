@@ -23,6 +23,7 @@ class RenderIndexHtml extends BuildTask
     # loading CordJS configuration
     nodeInit = require(path.join(@params.targetDir, 'public', pathToCore, 'init/nodeInit'))
     config = nodeInit.loadConfig(@params.info.configName)
+
     global.appConfig = config
     global.config    = config.node
     global.CORD_PROFILER_ENABLED = config.node.debug.profiler.enable
@@ -32,13 +33,20 @@ class RenderIndexHtml extends BuildTask
     .catch ->
       true
     .zip(requirejsConfig(@params.targetDir)).then ->
-      Future.require('cord!AppConfigLoader', 'cord!utils/DomInfo', 'cord!ServiceContainer', 'cord!WidgetRepo')
-    .then (AppConfigLoader, DomInfo, ServiceContainer, WidgetRepo) =>
+      Future.require('cord!AppConfigLoader', 'cord!utils/DomInfo', 'cord!ServiceContainer', 'cord!WidgetRepo', 'cord!router/ServerSideRouter')
+    .then (AppConfigLoader, DomInfo, ServiceContainer, WidgetRepo, ServerSideRouter) =>
+      # replace placeholder in configs
+      config = ServerSideRouter.constructor.replaceConfigVarsByHost(config, '127.0.0.1', 'http')
+
+      global.appConfig = config
+      global.config    = config.node
+
       # initializing core CordJS services
       container = new ServiceContainer
       container.set('container', container)
-      container.set('config', {})
-      container.set('appConfig', {})
+      container.set('config', global.config)
+      container.set('appConfig', global.appConfig)
+
       widgetRepo = new WidgetRepo
       widgetRepo.setServiceContainer(container)
 
@@ -62,7 +70,6 @@ class RenderIndexHtml extends BuildTask
     .then (out) ->
       Future.call(fs.writeFile, dst, out)
     .link(@readyPromise)
-
 
 
 module.exports = RenderIndexHtml
