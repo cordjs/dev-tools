@@ -24,8 +24,8 @@ class ServerProcessManager
         @params.port
       ], {cwd: @params.targetDir}
 
-      @_process.stdout.on('data', util.print)
-      @_process.stderr.on('data', util.print)
+      @_process.stdout.on('data', (x) -> process.stdout.write(x))
+      @_process.stderr.on('data', (x) -> process.stderr.write(x))
 
       @_process.on 'exit', (code) =>
         if @_errorCounter > 1
