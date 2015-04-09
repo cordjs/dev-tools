@@ -27,7 +27,6 @@
     "request":          "=2.51.0",
     "requirejs":        "=2.1.8",
     "stylus":           "=0.41.3",
-    "the-box":          "=0.0.1",
     "uglify-js":        ">=2.4.14",
     "underscore":       "=1.7.0"
   },
