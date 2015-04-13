@@ -15,6 +15,8 @@ class BuildManager
 
   @_taskIdCounter: 0
 
+  @generateSourceMap: false
+
   @createTask: (relativeFilePath, baseDir, targetDir, fileInfo) ->
     @findBestWorker().flatMap (worker) =>
       worker.addTask
@@ -23,6 +25,7 @@ class BuildManager
         baseDir: baseDir
         targetDir: targetDir
         info: fileInfo
+        generateSourceMap: @generateSourceMap
 
 
   @findBestWorker: ->

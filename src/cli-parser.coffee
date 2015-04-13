@@ -47,6 +47,7 @@ exports.run = (actionCallbacks) ->
     .withBuildOptions('build')
     .description('build project')
     .option('-w, --watch', 'watch for changes in source files and rebuild them continuously')
+    .option('-m, --map', 'also generate source maps')
     .option('-c, --config <name>', 'configuration file name. used to generate useful index.html. defaults to "' +
                                    DEFAULT_CONFIG_NAME + '"', DEFAULT_CONFIG_NAME)
     .action(actionCallbacks.build)
@@ -55,6 +56,7 @@ exports.run = (actionCallbacks) ->
     .withBuildOptions('run')
     .description('build project and run cordjs server')
     .option('-w, --watch', 'watch for changes in source files, rebuild and restart server continuously')
+    .option('-m, --map', 'also generate source maps')
     .option('-c, --config <name>', 'configuration file name. defaults to "' + DEFAULT_CONFIG_NAME + '"', DEFAULT_CONFIG_NAME)
     .option('-p, --port <port>',   "server listening port. defaults to #{ DEFAULT_SERVER_PORT }")
     .action(actionCallbacks.run)

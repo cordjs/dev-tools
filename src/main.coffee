@@ -75,6 +75,7 @@ normalizeBuildOptions = (options) ->
   targetDir: "#{curDir}/#{ if options.out then options.out else 'target'}"
   watch: !!options.watch
   clean: !!options.clean
+  map: !!options.map
   appConfigName: "#{ if options.app then options.app else 'application'}"
   indexPageWidget: options.index
 

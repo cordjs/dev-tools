@@ -23,21 +23,49 @@ class CompileCoffeeScript extends BuildTask
     dstName = if @params.info.isAppConfig then 'application' else basename
 
     src = "#{ @params.baseDir }/#{ @params.file }"
-    dst = "#{ @params.targetDir }/#{ dirname }/#{ dstName }.js"
+    dstBasename = "#{ @params.targetDir }/#{ dirname }/#{ dstName }"
 
     Future.call(fs.readFile, src, 'utf8').map (coffeeString) =>
       coffeeString = @preCompilerCallback(coffeeString) if @preCompilerCallback
-      js = coffee.compile coffeeString,
+      answer = coffee.compile coffeeString,
+        filename: src
+        literate: false
+        header: true
         compile: true
         bare: true
+        sourceMap: @params.generateSourceMap
+        jsPath: "#{ dstBasename }.js"
+        sourceRoot: './'
+        sourceFiles: [basename+'.coffee']
+        generatedFile: basename+'.js'
+
+      if not @params.generateSourceMap
+        js = answer
+        answer = {}
+        answer.js = js
+        answer.v3SourceMap = undefined
+      answer.coffeeString = coffeeString
       inf = @params.info
       if inf.isWidget or inf.isBehaviour or inf.isModelRepo or inf.isCollection
         name = inf.fileNameWithoutExt
-        js = js.replace("return #{name};\n", "#{name}.__name = '#{name}';\n\n   return #{name};\n")
-      js = @postCompilerCallback(js) if @postCompilerCallback?
-      js
-    .zip(Future.call(mkdirp, path.dirname(dst))).flatMap (jsString) =>
-      Future.call(fs.writeFile, dst, jsString)
+        answer.js = answer.js.replace("return #{name};\n", "#{name}.__name = '#{name}';\n\n   return #{name};\n")
+      answer.js = @postCompilerCallback(answer.js) if @postCompilerCallback?
+      if @params.generateSourceMap
+        answer.js = "#{answer.js}\n//# sourceMappingURL=./#{basename}.js.map"
+      answer
+    .zip(Future.call(mkdirp, path.dirname(dstBasename))).flatMap (answer) =>
+      Future.sequence([
+        Future.call(fs.writeFile, "#{dstBasename}.js", answer.js)
+        if undefined != answer.v3SourceMap
+          Future.call(fs.writeFile, "#{dstBasename}.js.map", answer.v3SourceMap)
+        else
+          Future.resolved()
+        # If we are also generating source maps, we should copy original coffee file to public directory
+        if undefined != answer.v3SourceMap
+          Future.call(fs.writeFile, "#{dstBasename}.coffee", answer.coffeeString)
+        else
+          Future.resolved()
+      ])
     .flatMapFail (err) ->
       if err instanceof SyntaxError and err.location?
         console.error "CoffeeScript syntax error: #{err.message}\n" +

@@ -45,6 +45,7 @@ class ProjectBuilder extends EventEmitter
 
   constructor: (@params) ->
     fileInfo.setDirs(@params.baseDir, @params.targetDir)
+    buildManager.generateSourceMap = @params.map
     @setupWatcher() if @params.watch
 
 
