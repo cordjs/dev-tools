@@ -23,7 +23,8 @@ class CompileCoffeeScript extends BuildTask
     dstName = if @params.info.isAppConfig then 'application' else basename
 
     src = "#{ @params.baseDir }/#{ @params.file }"
-    dstBasename = "#{ @params.targetDir }/#{ dirname }/#{ dstName }"
+    dstDir = "#{ @params.targetDir }/#{ dirname }"
+    dstBasename = "#{ dstDir}/#{ dstName }"
 
     Future.call(fs.readFile, src, 'utf8').map (coffeeString) =>
       coffeeString = @preCompilerCallback(coffeeString) if @preCompilerCallback
@@ -35,8 +36,8 @@ class CompileCoffeeScript extends BuildTask
         bare: true
         sourceMap: @params.generateSourceMap
         jsPath: "#{ dstBasename }.js"
-        sourceRoot: './'
-        sourceFiles: [dstName+'.coffee']
+        sourceRoot: "./"
+        sourceFiles: [path.relative(dstDir, "#{@params.baseDir}/#{dirname}")+"/#{basename}.coffee"]
         generatedFile: dstName+'.js'
 
       if not @params.generateSourceMap
@@ -51,18 +52,13 @@ class CompileCoffeeScript extends BuildTask
         answer.js = answer.js.replace("return #{name};\n", "#{name}.__name = '#{name}';\n\n   return #{name};\n")
       answer.js = @postCompilerCallback(answer.js) if @postCompilerCallback?
       if @params.generateSourceMap
-        answer.js = "#{answer.js}\n//# sourceMappingURL=./#{dstName}.js.map"
+        answer.js = "#{answer.js}\n//# sourceMappingURL=#{dstName}.map"
       answer
     .zip(Future.call(mkdirp, path.dirname(dstBasename))).flatMap (answer) =>
       Future.sequence([
         Future.call(fs.writeFile, "#{dstBasename}.js", answer.js)
         if undefined != answer.v3SourceMap
-          Future.call(fs.writeFile, "#{dstBasename}.js.map", answer.v3SourceMap)
-        else
-          Future.resolved()
-        # If we are also generating source maps, we should copy link coffee file to public directory
-        if undefined != answer.v3SourceMap
-          Future.call(fs.symlink, src, "#{dstBasename}.coffee").catch () -> undefined # ignore already exists symlink
+          Future.call(fs.writeFile, "#{dstBasename}.map", answer.v3SourceMap)
         else
           Future.resolved()
       ])

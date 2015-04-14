@@ -83,3 +83,4 @@ normalizeBuildOptions = (options) ->
 normalizeServerOptions = (options) ->
   config: options.config
   port: parseInt(options.port)
+  map: !!options.map

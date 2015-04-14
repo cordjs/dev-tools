@@ -17,12 +17,31 @@ class ServerProcessManager
 
   start: ->
     if not @_process
-      @_process = spawn 'node', [
+
+      serverProcessArgs = []
+
+      for arg in process.execArgv
+        if 0 == arg.indexOf('--debug-brk=')
+          currentPort = parseInt(arg.substring('--debug-brk='.length))
+          if null != currentPort
+            serverProcessArgs.push("--debug-brk=#{currentPort+1}")
+
+      serverProcessArgs = serverProcessArgs.concat [
         path.join(@params.targetDir, 'server.js')
         path.join(@params.targetDir, 'public')
         @params.config
         @params.port
-      ], {cwd: @params.targetDir}
+      ]
+
+      serverProcessParams =
+        cwd: @params.targetDir
+        env: {}
+
+      if @params.map
+        serverProcessParams.env.DEV_SOURCES_SERVER_ROOT_DIR = @params.baseDir
+
+      util.log "node #{serverProcessArgs.join(' ')}"
+      @_process = spawn('node', serverProcessArgs, serverProcessParams)
 
       @_process.stdout.on('data', (x) -> process.stdout.write(x))
       @_process.stderr.on('data', (x) -> process.stderr.write(x))

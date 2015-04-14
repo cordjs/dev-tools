@@ -35,7 +35,9 @@ class BuildWorkerManager
 
   constructor: (@manager) ->
     @id = ++BuildWorkerManager._idCounter
-    @_process = fork(__dirname + '/build-worker.js')
+    # All child processes should be started without debug!
+    childExecArgv = process.execArgv.filter (arg) -> -1 == arg.indexOf('--debug')
+    @_process = fork(__dirname + '/build-worker.js', execArgv: childExecArgv)
     @_acceptReady = Future.resolved(this)
     @_tasks = {}
     # worker process communication callback
