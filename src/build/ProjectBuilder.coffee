@@ -184,6 +184,13 @@ class ProjectBuilder extends EventEmitter
     buildManager.createTask('server.coffee', @params.baseDir, @params.targetDir, fileInfo.getFileInfo('server.coffee'))
       .link(completePromise)
 
+    buildManager.createTask(
+      'optimizer-predefined-groups.coffee', @params.baseDir, @params.targetDir,
+      fileInfo.getFileInfo('optimizer-predefined-groups.coffee')
+    ).catch ->
+      return # ignore errors
+    .link(completePromise)
+
     appConfPromise.then =>
       scanCore()
       requirejs.config
