@@ -35,7 +35,7 @@ class CorrelationGroupDetector
       for checksum, groupModules of filteredGroups
         if modules.indexOf(groupModules[0]) > -1
           modules = _.difference(modules, groupModules)
-          modules.push(checksum)
+          modules.push(checksum)  if groupModules.length < 20
       optimizedStat[page] = modules
 
     optimizedStat

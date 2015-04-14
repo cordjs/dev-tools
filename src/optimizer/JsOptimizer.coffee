@@ -39,23 +39,31 @@ class JsOptimizer
 
 
   run: ->
+    # will need it later
+    @_requireConfig = requirejsConfig.collect(@params.targetDir)
+
     statFile = 'require-stat.json'
-    Future.call(fs.readFile, statFile).mapFail ->
+    statPromise = Future.call(fs.readFile, statFile).catch ->
       console.warn "Error reading require-stat file '#{statFile}'. Going to group only by widget..."
       '{}'
-    .flatMap (data) =>
-      @_requireConfig = requirejsConfig.collect(@params.targetDir)
-      stat = JSON.parse(data)
+    .then (data) =>
+      JSON.parse(data)
+
+    predefinedPromise = Future.require("#{@params.targetDir}/optimizer-predefined-groups").catch (err) ->
+      console.warn "Error reading predefined-groups file: #{err}!"
+      {}
+
+    Future.sequence([statPromise, predefinedPromise]).spread (stat, predefinedGroupsInfo) =>
       console.log "Calculating JS group optimization..."
-      @_generateOptimizationMap(stat)
-    .flatMap (groupMap) =>
+      @_generateOptimizationMap(stat, predefinedGroupsInfo)
+    .then (groupMap) =>
       @_generateOptimizedFiles(groupMap)
-    .mapFail (e) ->
-      console.warn "JS group optimization failed! Reason: #{ e }. Skipping..."
+    .catch (e) ->
+      console.warn "JS group optimization failed! Reason: #{ e }. Skipping...", e.stack
       {}
 
 
-  _generateOptimizationMap: (stat) ->
+  _generateOptimizationMap: (stat, predefinedGroupsInfo) ->
     ###
     Analizes collected requirejs stats and tryes to group modules together in optimized way.
     @param Map[String -> Array[String]] stat collected statistics of required files per page
@@ -63,6 +71,10 @@ class JsOptimizer
     ###
     iterations = 1
     groupRepo = new GroupRepo
+
+    @_createPredefinedGroups(predefinedGroupsInfo, groupRepo)
+    @_removePredefinedGroupsFromStat(stat, predefinedGroupsInfo)
+    @_removeBrowserInitFromStat(stat)
 
     widgetDetector = new ByWidgetGroupDetector(groupRepo, @params.targetDir)
     widgetDetector.process(stat).map (stat) ->
@@ -88,6 +100,37 @@ class JsOptimizer
         resultMap[groupId] = _.uniq(group.getModules())
 
       resultMap
+
+
+  _createPredefinedGroups: (predefinedGroupsInfo, groupRepo) ->
+    ###
+    Registers predefined groups in group repository
+    ###
+    for name, modules of predefinedGroupsInfo
+      groupId = 'predefined-' + sha1(modules.sort().join()) + '-' + name
+      groupRepo.createGroup(groupId, modules)
+    return
+
+
+  _removePredefinedGroupsFromStat: (stat, predefinedGroupsInfo) ->
+    ###
+    Removes modules of predefined groups from the stat to avoid mixing them up with another groups
+    ###
+    removeModules = []
+    for name, modules of predefinedGroupsInfo
+      removeModules.push(m) for m in modules
+    for page, modules of stat
+      stat[page] = _.difference(modules, removeModules)
+    return
+
+
+  _removeBrowserInitFromStat: (stat) ->
+    ###
+    Removes browser-init script occurences from stat as it never included in any group
+    ###
+    for page, modules of stat
+      modules.shift() if modules[0].indexOf('bundles/cord/core/init/browser-init') != -1
+    return
 
 
   _generateOptimizedFiles: (groupMap) ->
