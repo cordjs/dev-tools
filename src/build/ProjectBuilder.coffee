@@ -190,6 +190,7 @@ class ProjectBuilder extends EventEmitter
         baseUrl: @params.targetDir
       appConfig.getBundles(@params.targetDir)
     .then (bundles) ->
+      bundles = bundles.filter (n) -> n != 'cord/core'
       fileInfo.setBundles(bundles)
       scanBundle(bundle) for bundle in bundles
       widgetClassesPromise.resolve()

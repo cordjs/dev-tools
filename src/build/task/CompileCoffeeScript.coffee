@@ -60,9 +60,9 @@ class CompileCoffeeScript extends BuildTask
           Future.call(fs.writeFile, "#{dstBasename}.js.map", answer.v3SourceMap)
         else
           Future.resolved()
-        # If we are also generating source maps, we should copy original coffee file to public directory
+        # If we are also generating source maps, we should copy link coffee file to public directory
         if undefined != answer.v3SourceMap
-          Future.call(fs.writeFile, "#{dstBasename}.coffee", answer.coffeeString)
+          Future.call(fs.symlink, src, "#{dstBasename}.coffee").catch () -> undefined # ignore already exists symlink
         else
           Future.resolved()
       ])
