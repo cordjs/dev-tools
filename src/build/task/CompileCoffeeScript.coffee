@@ -36,8 +36,8 @@ class CompileCoffeeScript extends BuildTask
         sourceMap: @params.generateSourceMap
         jsPath: "#{ dstBasename }.js"
         sourceRoot: './'
-        sourceFiles: [basename+'.coffee']
-        generatedFile: basename+'.js'
+        sourceFiles: [dstName+'.coffee']
+        generatedFile: dstName+'.js'
 
       if not @params.generateSourceMap
         js = answer
@@ -51,7 +51,7 @@ class CompileCoffeeScript extends BuildTask
         answer.js = answer.js.replace("return #{name};\n", "#{name}.__name = '#{name}';\n\n   return #{name};\n")
       answer.js = @postCompilerCallback(answer.js) if @postCompilerCallback?
       if @params.generateSourceMap
-        answer.js = "#{answer.js}\n//# sourceMappingURL=./#{basename}.js.map"
+        answer.js = "#{answer.js}\n//# sourceMappingURL=./#{dstName}.js.map"
       answer
     .zip(Future.call(mkdirp, path.dirname(dstBasename))).flatMap (answer) =>
       Future.sequence([
