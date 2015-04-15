@@ -35,7 +35,7 @@ class ServerProcessManager
 
       serverProcessParams =
         cwd: @params.targetDir
-        env: {}
+        env: process.env
 
       if @params.map
         serverProcessParams.env.DEV_SOURCES_SERVER_ROOT_DIR = @params.baseDir
