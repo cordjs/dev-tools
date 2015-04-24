@@ -166,7 +166,7 @@ class ProjectWatcher extends EventEmitter
           if watchInfo.watchAll
             # ignoring changes if this directory is not fully watched
             for name in addList.concat(changeList)
-              changeMap[path.join(dir, name)] = newMap[name]
+              changeMap[path.join(dir, name).replace(/\\/g, '/')] = newMap[name]
 
           removeListFiltered = []
           for name in removeList
@@ -174,7 +174,7 @@ class ProjectWatcher extends EventEmitter
             if watchInfo.watchAll or watchInfo.children[name]?
               # cleaning watch descriptors of the removed directories
               @_stopWatching(watchInfo.children[name]) if watchInfo.children[name]?
-              removeListFiltered.push(path.join(dir, name))
+              removeListFiltered.push(path.join(dir, name).replace(/\\/g, '/'))
 
           _.extend(summaryChangeMap, changeMap)
           summaryRemoveList = summaryRemoveList.concat(removeListFiltered)

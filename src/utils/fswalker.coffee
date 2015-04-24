@@ -77,7 +77,7 @@ class FsWalker extends EventEmitter
         [type, root, stat] = item
         if EventEmitter.listenerCount(this, type)
           @_active = true
-          @emit type, root, stat, @_next
+          @emit type, root.replace(/\\/g, '/'), stat, @_next
         else
           # if threre are no listeners, next() will never be called, so jump to the next item immediately
           continue

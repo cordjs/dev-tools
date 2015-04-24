@@ -34,7 +34,7 @@ walkerFilter = (dir, name) ->
     if ext == '.orig' or ext.substr(-1) == '~'
       false
     else
-      dir.indexOf('/' + '.') == -1
+      dir.indexOf('/.') == -1
   res
 
 
@@ -47,7 +47,6 @@ class ProjectBuilder extends EventEmitter
 
   constructor: (@params) ->
     @params.baseDir = preparePath(@params.baseDir)
-    #@params.targetDir = preparePath(@params.baseDir)
     fileInfo.setDirs(@params.baseDir, @params.targetDir)
     buildManager.generateSourceMap = @params.map
     @setupWatcher() if @params.watch
