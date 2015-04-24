@@ -2,6 +2,7 @@ _ = require 'underscore'
 
 Future = require './utils/Future'
 rmrf   = require './utils/rmrf'
+preparePath = require './utils/fsPreparePath'
 
 cliParser            = require './cli-parser'
 Optimizer            = require './optimizer/Optimizer'
@@ -45,7 +46,7 @@ exports.main = ->
     optimize: (options) ->
       handleChdir(options)
       optimizer = new Optimizer
-        targetDir: "#{ process.cwd() }/#{ options.out }"
+        targetDir: "#{ preparePath(process.cwd()) }/#{ options.out }"
         clean: options.clean
         css: not options.disableCss
         cssMinify: not options.disableCssMinify
@@ -69,7 +70,7 @@ handleChdir = (options) ->
 
 
 normalizeBuildOptions = (options) ->
-  curDir = process.cwd()
+  curDir = preparePath(process.cwd())
 
   baseDir: curDir
   targetDir: "#{curDir}/#{ if options.out then options.out else 'target'}"

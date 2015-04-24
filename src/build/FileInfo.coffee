@@ -54,7 +54,7 @@ class FileInfo
     @param String file relative (to the base dir) file path
     @return String
     ###
-    parts = file.split(path.sep)
+    parts = file.split('/')
     bundles = parts.shift()
     bundles = parts.shift()
     if bundles == 'bundles'
@@ -81,7 +81,7 @@ class FileInfo
     @param (optional)String bundle bundle to which this file belongs
     @return Object key-value with file properties
     ###
-    parts = file.split(path.sep)
+    parts = file.split('/')
     inPublic = parts[0] == 'public'
     fileName = parts.pop()
     lastDirName = parts[parts.length - 1]
@@ -153,7 +153,6 @@ class FileInfo
       file + '.js'
     else
       file
-
 
 
 module.exports = FileInfo

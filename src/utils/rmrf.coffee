@@ -9,7 +9,7 @@ rmrf = (target) ->
   @param String target absolute path to the file/directory to be removed
   @return Future
   ###
-  if target.charAt(0) == '/' and target.trim().length > 5
+  if (target.charAt(0) == '/' or target.charAt(1) == ':')  and target.trim().length > 5
     Future.call(fs.lstat, target).flatMap (stat) ->
       if stat.isDirectory()
         Future.call(fs.readdir, target).flatMap (items) ->

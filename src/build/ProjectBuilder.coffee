@@ -3,6 +3,8 @@ fs             = require 'fs'
 {EventEmitter} = require 'events'
 _              = require 'underscore'
 
+preparePath    = require '../utils/fsPreparePath'
+
 requirejs = require process.cwd() + '/node_modules/requirejs'
 
 Future    = require '../utils/Future'
@@ -32,7 +34,7 @@ walkerFilter = (dir, name) ->
     if ext == '.orig' or ext.substr(-1) == '~'
       false
     else
-      dir.indexOf(path.sep + '.') == -1
+      dir.indexOf('/' + '.') == -1
   res
 
 
@@ -44,6 +46,8 @@ class ProjectBuilder extends EventEmitter
   _emitCompletePromise: null
 
   constructor: (@params) ->
+    @params.baseDir = preparePath(@params.baseDir)
+    #@params.targetDir = preparePath(@params.baseDir)
     fileInfo.setDirs(@params.baseDir, @params.targetDir)
     buildManager.generateSourceMap = @params.map
     @setupWatcher() if @params.watch
@@ -62,22 +66,26 @@ class ProjectBuilder extends EventEmitter
 
 
     scanDir = (dir, payloadCallback) =>
+      dir = preparePath(dir)
       completePromise.done => @watchDir(dir)
 
       completePromise.fork()
       walker = fswalker(dir, filter: walkerFilter)
       walker.on 'file', (root, stat, next) =>
+        root = preparePath(root)
         relativeDir = root.substr(relativePos)
         payloadCallback("#{relativeDir}/#{stat.name}", stat)
         setTimeout next, 0
 
       walker.on 'symbolicLink', (root, stat, next) =>
+        root = preparePath(root)
         relativeDir = root.substr(relativePos)
         payloadCallback("#{relativeDir}/#{stat.name}", stat)
         next()
 
       if (@params.watch)
         walker.on 'directory', (root, stat, next) =>
+          root = preparePath(root)
           completePromise.done => @watchDir("#{root}/#{stat.name}")
           next()
 
@@ -268,7 +276,7 @@ class ProjectBuilder extends EventEmitter
               next()
 
             walker.on 'directory', (root, stat, next) =>
-              sessionCompletePromise.done => @watchDir("#{root}/#{stat.name}")
+              sessionCompletePromise.done => @watchDir(preparePath("#{root}/#{stat.name}"))
               next()
 
             walker.on 'end', ->

@@ -48,7 +48,7 @@ class ProjectWatcher extends EventEmitter
 
   addDir: (dir) ->
     if dir.indexOf(@baseDir) == 0
-      parts = dir.substr(@baseDir.length).split(path.sep)
+      parts = dir.substr(@baseDir.length).split('/')
       parts = _.compact(parts)
       curParent = @_watchTree
       try
