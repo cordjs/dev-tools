@@ -1,10 +1,8 @@
 path = require('path')
 
-
-sep = if path.sep == '\\' then '\\\\' else path.sep
 # regexp: !test/.*/specs/.*\.coffee$!
-testSpecPathRegExp = new RegExp('test'+sep+'.*'+sep+'specs'+sep+'.*\\.coffee$')
-testObjectPathRegExp = new RegExp('test'+sep+'.*'+sep+'(page-objects|helpers)'+sep+'.*\\.coffee$')
+testSpecPathRegExp = new RegExp('test/.*/specs/.*\\.coffee$')
+testObjectPathRegExp = new RegExp('test/.*/(page-objects|helpers)/.*\\.coffee$')
 
 
 class FileInfo
@@ -54,7 +52,7 @@ class FileInfo
     @param String file relative (to the base dir) file path
     @return String
     ###
-    parts = file.split(path.sep)
+    parts = file.split('/')
     bundles = parts.shift()
     bundles = parts.shift()
     if bundles == 'bundles'
@@ -81,7 +79,7 @@ class FileInfo
     @param (optional)String bundle bundle to which this file belongs
     @return Object key-value with file properties
     ###
-    parts = file.split(path.sep)
+    parts = file.split('/')
     inPublic = parts[0] == 'public'
     fileName = parts.pop()
     lastDirName = parts[parts.length - 1]

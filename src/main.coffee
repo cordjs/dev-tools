@@ -69,7 +69,7 @@ handleChdir = (options) ->
 
 
 normalizeBuildOptions = (options) ->
-  curDir = process.cwd()
+  curDir = process.cwd().replace(/\\/g, '/')
 
   baseDir: curDir
   targetDir: "#{curDir}/#{ if options.out then options.out else 'target'}"

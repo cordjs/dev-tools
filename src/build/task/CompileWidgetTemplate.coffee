@@ -24,7 +24,7 @@ class CompileWidgetTemplate extends BuildTask
     ###
     name = @params.info.fileNameWithoutExt
     className = name.charAt(0).toUpperCase() + name.slice(1)
-    parts = @params.file.split(path.sep).slice(2, -2)
+    parts = @params.file.split('/').slice(2, -2)
     parts.push(className)
     '/' + parts.join('/').replace('/widgets/', '//')
 

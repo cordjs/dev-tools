@@ -32,7 +32,7 @@ walkerFilter = (dir, name) ->
     if ext == '.orig' or ext.substr(-1) == '~'
       false
     else
-      dir.indexOf(path.sep + '.') == -1
+      dir.indexOf('/.') == -1
   res
 
 
