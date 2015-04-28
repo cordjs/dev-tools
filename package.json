@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "amdefine":         "=0.0.8",
-    "asap":             "~2.0.1",
+    "asap":             "~2.0.3",
     "bcryptjs":         "~2.0.2",
     "clean-css":        "=2.0.8",
     "coffee-script":    ">=1.7.1",
