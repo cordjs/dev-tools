@@ -105,7 +105,7 @@ class FileInfo
               isWidget = lastDirName == lowerName
               isBehaviour = (lastDirName + 'Behaviour') == lowerName
             else if ext == '.html'
-              isWidgetTemplate = lastDirName == fileWithoutExt
+              isWidgetTemplate = true # lastDirName == fileWithoutExt
           else if inModels
             isModelRepo = ext == '.coffee' and fileWithoutExt.substr(-4) == 'Repo'
             isCollection = ext == '.coffee' and fileWithoutExt.substr(-10) == 'Collection'

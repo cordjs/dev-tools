@@ -22,7 +22,7 @@ class CompileWidgetTemplate extends BuildTask
     Builds and returns canonical name of the widget of the template file from the task params
     @return String
     ###
-    name = @params.info.fileNameWithoutExt
+    name = @params.info.lastDirName 
     className = name.charAt(0).toUpperCase() + name.slice(1)
     parts = @params.file.split('/').slice(2, -2)
     parts.push(className)
