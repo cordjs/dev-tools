@@ -61,7 +61,13 @@ class CssOptimizer
     for page, groups of stat
       for groupId in groups
         group = groupRepo.getGroup(groupId)
-        resultMap[groupId] = _.uniq(group.getModules()) if group
+        if group
+          resultMap[groupId] = _.uniq(group.getModules())
+          groupRepo.removeGroupDeep(groupId)
+
+    # adding previously excluded from stat correlation groups to the result map
+    for groupId, group of groupRepo.getGroups() when not group.isSubGroup()
+      resultMap[groupId] = _.uniq(group.getModules())
 
     resultMap
 
