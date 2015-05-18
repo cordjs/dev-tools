@@ -52,6 +52,7 @@ exports.main = ->
         cssMinify: not options.disableCssMinify
         js: not options.disableJs
         jsMinify: not options.disableJsMinify
+        removeSources: !!options.removeSources
       optimizer.run()
 
 

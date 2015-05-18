@@ -75,6 +75,7 @@ exports.run = (actionCallbacks) ->
     .option('--disable-css-minify', 'do not minify (via clean-css) merged CSS files. By default CSS minification is enabled.')
     .option('--disable-js', 'do not perform JS group optimization. By default JS optimization is enabled.')
     .option('--disable-js-minify', 'do not minify (via uglify-js) merged javascript files. By default JS minification is enabled.')
+    .option('--remove-sources', 'remove source files that are merged and minified.')
     .action(actionCallbacks.optimize)
 
   program.parse(process.argv)

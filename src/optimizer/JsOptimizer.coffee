@@ -175,6 +175,7 @@ class JsOptimizer
     existingModules = []
     contentArr = []
     csUtilHit = {}
+    removePromises = []
     futures = for module, j in modules
       do (module, j) =>
         moduleFile = if requireConf.paths[module]
@@ -182,6 +183,7 @@ class JsOptimizer
         else
           "#{@params.targetDir}/public/#{module}.js"
         Future.call(fs.readFile, moduleFile, 'utf8').map (origJs) =>
+          removePromises.push(Future.call(fs.unlink, moduleFile))  if @params.removeSources
           # inserting module name into amd module definitions
           js = origJs
             .replace('define([', "define('#{module}',[")
@@ -212,7 +214,7 @@ class JsOptimizer
           # ignoring absent files (it may be caused by the obsolete stat-file)
           false
 
-    Future.sequence(futures).zip(@zDirFuture).flatMap =>
+    savePromise = Future.sequence(futures).zip(@zDirFuture).flatMap =>
       resultCode = ''
 
       # adding one instance of coffee-script utility functions cutted above
@@ -230,6 +232,13 @@ class JsOptimizer
       console.log "Saving #{fileName}.js ..."
       Future.call(fs.writeFile, "#{@_zDir}/#{ fileName }.js", mergedContent).map ->
         [fileName, existingModules]
+
+    Future.sequence [
+      savePromise
+      Future.sequence(removePromises)
+    ]
+    .spread (savePromiseResult) ->
+      savePromiseResult
     .failAloud('JsOptimizer::_mergeGroup')
 
 

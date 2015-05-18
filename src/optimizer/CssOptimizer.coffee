@@ -118,10 +118,12 @@ class CssOptimizer
     ###
     existingFiles = []
     contentArr = []
+    removePromises = []
     futures = for file, j in cssFiles
       do (file, j) =>
         filePath = "#{@params.targetDir}/public#{file}"
         Future.call(fs.readFile, filePath, 'utf8').map (origCss) =>
+          removePromises.push(Future.call(fs.unlink, filePath))  if @params.removeSources
           # replacing relative urls
           fileBaseUrl = path.dirname(file)
           css = origCss.replace(relativeReplaceRe, "url(\"#{fileBaseUrl}/$1\")")
@@ -136,13 +138,20 @@ class CssOptimizer
           # ignoring absent files (it may be caused by the obsolete stat-file)
           false
 
-    Future.sequence(futures).zip(@zDirFuture).flatMap =>
+    savePromise = Future.sequence(futures).zip(@zDirFuture).flatMap =>
       mergedContent = contentArr.join("\n\n")
       mergedContent = cleanCss.minify(mergedContent) if @params.cssMinify
       fileName = sha1(mergedContent)
       console.log "Saving #{fileName}.css ..."
       Future.call(fs.writeFile, "#{@_zDir}/#{fileName}.css", mergedContent).map ->
         [fileName, existingFiles]
+
+    Future.sequence [
+      savePromise
+      Future.sequence(removePromises)
+    ]
+    .spread (savePromiseResult) ->
+      savePromiseResult
     .failAloud('CssOptimizer::_mergeGroup')
 
 
