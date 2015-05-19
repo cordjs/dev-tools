@@ -9,9 +9,9 @@ class CompileWidgetTemplate extends BuildTask
   run: ->
     src = "#{ @params.baseDir }/#{ @params.file }"
 
-    requirejsConfig(@params.targetDir).flatMap ->
+    requirejsConfig(@params.targetDir).then ->
       Future.require('cord!compile/WidgetCompiler')
-    .flatMap (WidgetCompiler) =>
+    .then (WidgetCompiler) =>
       WidgetCompiler.compileWidgetTemplate(@_getWidgetCanonicalName(), src)
     .failAloud()
     .link(@readyPromise)
@@ -22,7 +22,7 @@ class CompileWidgetTemplate extends BuildTask
     Builds and returns canonical name of the widget of the template file from the task params
     @return String
     ###
-    name = @params.info.lastDirName 
+    name = @params.info.lastDirName
     className = name.charAt(0).toUpperCase() + name.slice(1)
     parts = @params.file.split('/').slice(2, -2)
     parts.push(className)

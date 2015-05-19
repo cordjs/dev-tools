@@ -33,9 +33,9 @@ exports.collect = (targetDir) ->
       baseUrl: path.join(targetDir, 'public')
       paths: pathConfig
 
-    savedConfigFuture = appConfig.getBundles(targetDir).flatMap (bundles) ->
+    savedConfigFuture = appConfig.getBundles(targetDir).then (bundles) ->
       configs = ("cord!/#{ bundle }/config" for bundle in bundles)
       Future.require(configs)
-    .map (configs...) ->
+    .then (configs) ->
       _.merge(resultConfig, config.requirejs) for config in configs when config.requirejs
       resultConfig

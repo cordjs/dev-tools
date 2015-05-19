@@ -4,75 +4,121 @@ Future = require('../utils/Future')
 BuildWorkerManager = require('./BuildWorkerManager')
 
 
-class BuildManager
+MAX_WORKERS = Math.max(os.cpus().length, 2)
+workers = []
+taskIdCounter = 0
+
+# {Array<Future<BuildWorkerQueue>>} queue of promises waiting for the free build worker
+workerQueue = []
+# processWorkerQueue function trigger flag
+queueActivated = false
+
+
+joinTheQueue = ->
+  ###
+  Creates a new promise, puts it to the queue and returns it.
+  It'll be completed with the free build worker when the promise is first in the queue.
+  @return {Future<BuildWorkerManager>}
+  ###
+  resultPromise = Future.single()
+  workerQueue.push(resultPromise)
+  processWorkerQueue()  if not queueActivated
+  resultPromise
+
+
+processWorkerQueue = ->
+  ###
+  Fulfills waiting promises from the queue with the free workers as they are getting free.
+  Works until the queue is empty.
+  ###
+  queueActivated = true
+  Future.any(workers.map (w) -> w.acceptReady()).then (worker) ->
+    if worker.canAcceptTask()
+      workerQueue.shift().resolve(worker)
+    if workerQueue.length
+      processWorkerQueue()
+    else
+      queueActivated = false
+    return
+  .failAloud('processWorkerQueue')
+  return
+
+
+findBestWorker = ->
+  ###
+  Chooses best worker process (less loaded) for the next file.
+  @return {Future<BuildWorkerManager>}
+  ###
+  # firstly take worker without any workload
+  emptyWorker = _.find workers, (w) -> w.getWorkload() == 0
+  if emptyWorker
+    Future.resolved(emptyWorker)
+  else
+    # secondly create a new worker process if there is a room according to settings
+    if workers.length < MAX_WORKERS
+      newWorker = new BuildWorkerManager(self)
+      workers.push(newWorker)
+      Future.resolved(newWorker)
+    else
+      # thirdly get the least loaded worker which can accept tasks at the moment
+      freeWorkers = workers.filter (w) -> w.canAcceptTask()
+      if freeWorkers.length
+        sorted = _.sortBy freeWorkers, (w) -> w.getWorkload()
+        Future.resolved(sorted[0])
+      else
+        # lastly, if all workers can't accept tasks now, wait for the first available worker
+        joinTheQueue()
+
+
+module.exports = self =
   ###
   Build worker process manager and load balancer for the build tasks
   @static
   ###
 
-  @workers: []
-  @MAX_WORKERS: Math.max(os.cpus().length, 2)
+  generateSourceMap: false
 
-  @_taskIdCounter: 0
-
-  @generateSourceMap: false
-
-  @createTask: (relativeFilePath, baseDir, targetDir, fileInfo) ->
-    @findBestWorker().flatMap (worker) =>
+  createTask: (relativeFilePath, baseDir, targetDir, fileInfo) ->
+    ###
+    Assigns a new task based on the given params to the free build worker
+    @param {String} relativeFlePath - file to be built
+    @param {String} baseDir - base dir of the building project
+    @param {String} targetDir
+    @param {Object} fileInfo - special precomputed file properties used by the build task
+    @return {Future<undefined>} promise is complete when the build task is complete
+    ###
+    findBestWorker().then (worker) =>
       worker.addTask
-        id: ++@_taskIdCounter
+        id: ++taskIdCounter
         file: relativeFilePath
         baseDir: baseDir
         targetDir: targetDir
         info: fileInfo
         generateSourceMap: @generateSourceMap
-
-
-  @findBestWorker: ->
-    ###
-    Chooses best worker process (less loaded) for the next file.
-    @return Future[Worker]
-    ###
-    result = Future.single()
-
-    # firstly take worker without any workload
-    emptyWorker = _.find @workers, (w) -> w.getWorkload() == 0
-    if emptyWorker
-      result.resolve(emptyWorker)
-    else
-      # secondly create a new worker process if there is a room according to settings
-      if @workers.length < @MAX_WORKERS
-        newWorker = new BuildWorkerManager(this)
-        @workers.push(newWorker)
-        result.resolve(newWorker)
+    .catch (err) =>
+      if err.overwhelmed  # racing condition, just need to retry
+        @createTask(relativeFilePath, baseDir, targetDir, fileInfo)
       else
-        # thirdly get the least loaded worker which can accept tasks at the moment
-        freeWorkers = _.filter @workers, (w) -> w.canAcceptTask()
-        if freeWorkers.length
-          sorted = _.sortBy freeWorkers, (w) -> w.getWorkload()
-          result.resolve(sorted[0])
-        else
-          # lastly, if all workers can't accept tasks now, wait for the first available worker
-          # we should retry waiting because another task could tackle the worker
-          recursiveWait = =>
-            Future.select(_.map @workers, (w) -> w.acceptReady()).done (worker) ->
-              if worker.canAcceptTask()
-                result.resolve(worker)
-              else
-                recursiveWait()
-          recursiveWait()
-
-    result
+        throw err
 
 
-  @stop: ->
-    w.stop() for w in @workers
+  stop: ->
+    ###
+    Immediately stops all build workers
+    ###
+    # for loop is not appropriate here because worker.stop() call implicitly modifies workers array.
+    while workers.length
+      workers[0].stop()
+    return
 
 
-  @stopWorker: (worker) ->
-    @workers = _.without(@workers, worker)
-    console.log "Worker #{ worker.id } stopped. Total tasks count: #{ worker.totalTasksCount }" if false
-
-
-
-module.exports = BuildManager
+  stopWorker: (worker) ->
+    ###
+    Removes the given worker from the workers array.
+    Called from the build worker to consistently complete its stopping.
+    @internal
+    @param {BuildWorkerManager} worker
+    ###
+    workers = _.without(workers, worker)
+    console.log "Worker #{ worker.id } stopped. Total tasks count: #{ worker.totalTasksCount }"  if false
+    return

@@ -33,13 +33,13 @@ class CssOptimizer
 
   run: ->
     cssStatFile = 'css-stat.json'
-    Future.call(fs.readFile, cssStatFile).flatMap (data) =>
+    Future.call(fs.readFile, cssStatFile).then (data) =>
       stat = JSON.parse(data)
       @_calculateGlobalOrder(stat)
       console.log "Calculating css group optimization..."
       groupMap = @_generateOptimizationMap(stat)
       @_generateOptimizedFiles(groupMap)
-    .mapFail (e) ->
+    .catch (e) ->
       console.warn "CSS group optimization failed! Reason: #{ e }. Skipping..."
       {}
 
@@ -76,17 +76,17 @@ class CssOptimizer
     ###
     Generates and saves optimized module group and configuration files
     @param Map[String -> Array[String]] groupMap optimized group map
-    @return Future
+    @return {Future<Object>}
     ###
     console.log "Merging CSS group files..."
-    @_mergeGroups(groupMap).flatMap (mergedGroupMap) =>
+    @_mergeGroups(groupMap).then (mergedGroupMap) =>
       cssToGroup = {}
       for groupId, urls of mergedGroupMap
         for css in urls
           cssToGroup[css] = groupId
       fileName = "#{@params.targetDir}/conf/css-to-group-generated.js"
-      Future.call(fs.writeFile, fileName, "define(function(){ return #{ JSON.stringify(cssToGroup, null, 2) }; });").map ->
-        mergedGroupMap
+      Future.call(fs.writeFile, fileName, "define(function(){ return #{ JSON.stringify(cssToGroup, null, 2) }; });")
+        .then -> mergedGroupMap
 
 
   _mergeGroups: (groupMap) ->
@@ -97,15 +97,13 @@ class CssOptimizer
     @param Object requireConf requirejs configuration object
     @return Future[Map[String -> Array[String]]
     ###
-    result = new Future(1)
     resultMap = {}
-    for groupId, cssFiles of groupMap
-      do (cssFiles) =>
-        result.fork()
-        @_mergeGroup(@_reorderGroupFiles(cssFiles)).done (fileName, existingFiles) ->
+    mergePromises =
+      for groupId, cssFiles of groupMap
+        @_mergeGroup(@_reorderGroupFiles(cssFiles)).spread (fileName, existingFiles) ->
           resultMap[fileName] = existingFiles
-          result.resolve()
-    result.resolve().map -> resultMap
+          return
+    Future.all(mergePromises).then -> resultMap
 
 
   _mergeGroup: (cssFiles) ->
@@ -122,7 +120,7 @@ class CssOptimizer
     futures = for file, j in cssFiles
       do (file, j) =>
         filePath = "#{@params.targetDir}/public#{file}"
-        Future.call(fs.readFile, filePath, 'utf8').map (origCss) =>
+        Future.call(fs.readFile, filePath, 'utf8').then (origCss) =>
           removePromises.push(Future.call(fs.unlink, filePath))  if @params.removeSources
           # replacing relative urls
           fileBaseUrl = path.dirname(file)
@@ -134,21 +132,21 @@ class CssOptimizer
           contentArr[j] = css
           existingFiles.push(file)
           true
-        .mapFail ->
+        .catch ->
           # ignoring absent files (it may be caused by the obsolete stat-file)
           false
 
-    savePromise = Future.sequence(futures).zip(@zDirFuture).flatMap =>
+    savePromise = Future.all([Future.all(futures), @zDirFuture]).then =>
       mergedContent = contentArr.join("\n\n")
       mergedContent = cleanCss.minify(mergedContent) if @params.cssMinify
       fileName = sha1(mergedContent)
       console.log "Saving #{fileName}.css ..."
-      Future.call(fs.writeFile, "#{@_zDir}/#{fileName}.css", mergedContent).map ->
+      Future.call(fs.writeFile, "#{@_zDir}/#{fileName}.css", mergedContent).then ->
         [fileName, existingFiles]
 
-    Future.sequence [
+    Future.all [
       savePromise
-      Future.sequence(removePromises)
+      Future.all(removePromises)
     ]
     .spread (savePromiseResult) ->
       savePromiseResult

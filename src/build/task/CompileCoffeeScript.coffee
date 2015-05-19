@@ -26,7 +26,7 @@ class CompileCoffeeScript extends BuildTask
     dstDir = "#{ @params.targetDir }/#{ dirname }"
     dstBasename = "#{ dstDir}/#{ dstName }"
 
-    Future.call(fs.readFile, src, 'utf8').map (coffeeString) =>
+    compilePromise = Future.call(fs.readFile, src, 'utf8').then (coffeeString) =>
       coffeeString = @preCompilerCallback(coffeeString) if @preCompilerCallback
       answer = coffee.compile coffeeString,
         filename: src
@@ -54,21 +54,27 @@ class CompileCoffeeScript extends BuildTask
       if @params.generateSourceMap
         answer.js = "#{answer.js}\n//# sourceMappingURL=#{dstName}.map"
       answer
-    .zip(Future.call(mkdirp, path.dirname(dstBasename))).flatMap (answer) =>
-      Future.sequence([
+
+    Future.all [
+      compilePromise
+      Future.call(mkdirp, path.dirname(dstBasename))
+    ]
+    .spread (answer) =>
+      Future.all [
         Future.call(fs.writeFile, "#{dstBasename}.js", answer.js)
         if undefined != answer.v3SourceMap
           Future.call(fs.writeFile, "#{dstBasename}.map", answer.v3SourceMap)
         else
-          Future.resolved()
-      ])
-    .flatMapFail (err) ->
+          undefined
+      ]
+    .catch (err) ->
       if err instanceof SyntaxError and err.location?
         console.error "CoffeeScript syntax error: #{err.message}\n" +
           "#{src}:#{err.location.first_line}:#{err.location.first_column}\n"
-        Future.rejected(new BuildTask.ExpectedError(err))
+        throw new BuildTask.ExpectedError(err)
       else
-        Future.rejected(err)
+        throw err
+    .then -> return
     .link(@readyPromise)
 
 

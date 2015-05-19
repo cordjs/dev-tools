@@ -1,12 +1,12 @@
-fs        = require 'fs'
-path      = require 'path'
+fs   = require 'fs'
+path = require 'path'
 
 Future = require '../utils/Future'
 
 requirejsConfig = require './requirejsConfig'
 
 
-templateFile   = 'public/bundles/cord/core/init/browser-init.opt.tmpl.js'
+templateFile = 'public/bundles/cord/core/init/browser-init.opt.tmpl.js'
 
 exports.generate = (params, jsGroupMap, cssGroupMap) ->
   ###
@@ -17,9 +17,11 @@ exports.generate = (params, jsGroupMap, cssGroupMap) ->
   @return Future[String]
   ###
   try
-    requirejsConfig.collect(params.targetDir)
-      .zip(Future.call(fs.readFile, path.join(params.targetDir, templateFile), 'utf8'))
-    .map (requireConf, tmplString) ->
+    Future.all [
+      requirejsConfig.collect(params.targetDir)
+      Future.call(fs.readFile, path.join(params.targetDir, templateFile), 'utf8')
+    ]
+    .spread (requireConf, tmplString) ->
       tmplString
         .replace('COMPUTED_REQUIREJS_CONFIG', JSON.stringify(requireConf, null, 2))
         .replace('JS_GROUP_MAP', JSON.stringify(jsGroupMap, null, 2))

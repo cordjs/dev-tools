@@ -98,42 +98,44 @@ class ProjectBuilder extends EventEmitter
       scanDir dir, (relativeName, stat) =>
         info = fileInfo.getFileInfo(relativeName)
         completePromise.fork()
-        sourceModified(relativeName, stat, @params.targetDir, info).map (modified) =>
+        sourceModified(relativeName, stat, @params.targetDir, info).then (modified) =>
           if modified
             completePromise.when(
               buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
             )
           completePromise.resolve()
+          return
 
 
     scanCore = =>
       scanDir "#{ @params.baseDir }/public/bundles/cord/core", (relativeName, stat) =>
         info = fileInfo.getFileInfo(relativeName, 'cord/core')
         completePromise.fork()
-        sourceModified(relativeName, stat, @params.targetDir, info).map (modified) =>
+        sourceModified(relativeName, stat, @params.targetDir, info).then (modified) =>
           if modified
             if info.inWidgets
               if info.isWidget
-                task = corePromise.flatMap =>
+                corePromise.then =>
                   buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
-                completePromise.when(task)
-                widgetClassesPromise.when(task)
+                .link(completePromise)
+                .link(widgetClassesPromise)
               else if info.isWidgetTemplate
-                widgetClassesPromise.flatMap =>
+                widgetClassesPromise.then =>
                   buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
                 .link(completePromise)
               else if info.isStylus
-                pathUtilsPromise.flatMap =>
+                pathUtilsPromise.then =>
                   buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
                 .link(completePromise)
               else
                 buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
                   .link(completePromise)
             else if not (info.fileName == 'pathUtils.coffee' and info.lastDirName == 'requirejs')
-              task = buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
-              corePromise.when(task)
-              completePromise.when(task)
+              buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
+                .link(corePromise)
+                .link(completePromise)
           completePromise.resolve()
+          return
         .link(corePromise)
       .on 'end', ->
         corePromise.resolve()
@@ -145,15 +147,15 @@ class ProjectBuilder extends EventEmitter
       scanDir "#{ @params.baseDir }/public/bundles/#{ bundle }", (relativeName, stat) =>
         info = fileInfo.getFileInfo(relativeName, bundle)
         completePromise.fork()
-        sourceModified(relativeName, stat, @params.targetDir, info).map (modified) =>
+        sourceModified(relativeName, stat, @params.targetDir, info).then (modified) =>
           if modified
             if info.isWidget
-              task = corePromise.flatMap =>
+              corePromise.then =>
                 buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
-              completePromise.when(task)
-              widgetClassesPromise.when(task)
+              .link(completePromise)
+              .link(widgetClassesPromise)
             else if info.isWidgetTemplate
-              widgetClassesPromise.zip(nonWidgetFilesPromise).flatMap =>
+              Future.all([widgetClassesPromise, nonWidgetFilesPromise]).then =>
                 buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
               .link(completePromise)
             else if info.isCoffee and not info.inWidgets
@@ -161,13 +163,14 @@ class ProjectBuilder extends EventEmitter
                 .link(completePromise)
                 .link(nonWidgetFilesPromise)
             else if info.isStylus
-              pathUtilsPromise.flatMap =>
+              pathUtilsPromise.then =>
                 buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
               .link(completePromise)
             else
               buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
                 .link(completePromise)
           completePromise.resolve()
+          return
       .on 'end', ->
         widgetClassesPromise.resolve()
         nonWidgetFilesPromise.resolve()
@@ -218,8 +221,11 @@ class ProjectBuilder extends EventEmitter
         corePromise.then =>
           requirejsConfig(@params.targetDir)
         .then ->
-          Future.require('cord!requirejs/cord-w').zip(completePromise)
-        .then (cord) =>
+          Future.all [
+            Future.require('cord!requirejs/cord-w') # todo: find out - what is it for? (introduced with phonegap support)
+            completePromise
+          ]
+        .then =>
           info =
             isIndexPage: true
             configName: @params.config
@@ -231,13 +237,16 @@ class ProjectBuilder extends EventEmitter
 
     fullCompletePromise
       .then -> 'completed'
-      .catch -> 'failed'
+      .catch (err) ->
+        console.error "Build error", err, err.stack
+        'failed'
       .then (verb) =>
         diff = process.hrtime(start)
         console.log "Build #{verb} in #{ parseFloat((diff[0] * 1e9 + diff[1]) / 1e9).toFixed(3) } s"
         if verb == 'completed'
           buildManager.stop()
           @emit 'complete'
+      .failAloud('ProjectBuilder::build')
 
 
   setupWatcher: ->
@@ -252,12 +261,12 @@ class ProjectBuilder extends EventEmitter
           @_emitCompletePromise = null
       else
         @_emitCompletePromise.fork()
-      currentSessionPromise = @_previousSessionPromise.flatMap =>
+      currentSessionPromise = @_previousSessionPromise.then =>
         rmList = for removed in _.sortBy(changes.removed, (f) -> f.length).reverse()
           console.log "removing #{removed}..."
           rmrf(fileInfo.getTargetForSource(removed)).failAloud()
 
-        Future.sequence(rmList).flatMap =>
+        Future.all(rmList).then =>
           buildSession = new BuildSession(@params)
           sessionCompletePromise = Future.single()
 
@@ -290,10 +299,10 @@ class ProjectBuilder extends EventEmitter
               buildSession.add(file)
             else if stat.isDirectory()
               scanCompletePromise.when(scanDir(file))
-          scanCompletePromise.flatMap ->
+          scanCompletePromise.then ->
             sessionCompletePromise.when(buildSession.complete())
-          .done =>
-            @_emitCompletePromise.resolve()
+        .then =>
+          @_emitCompletePromise.resolve()
 
       @_previousSessionPromise = currentSessionPromise
 
@@ -314,9 +323,9 @@ sourceModified = (file, srcStat, targetDir, info) ->
   @return Future[Boolean]
   ###
   dstPath = path.join(targetDir, fileInfo.getBuildDestinationFile(file, info))
-  Future.call(fs.stat, dstPath).map (dstStat) ->
+  Future.call(fs.stat, dstPath).then (dstStat) ->
     srcStat.mtime.getTime() > dstStat.mtime.getTime()
-  .mapFail ->
+  .catch ->
     true
 
 

@@ -24,14 +24,15 @@ class ByWidgetGroupDetector
     ###
     Recursively scans the given directory to group widgets files together.
     @param String target absolute path to the file/directory to be removed
-    @return Future
+    @return {Future<undefined>}
     ###
     Future.call(fs.stat, target).then (stat) =>
       if stat.isDirectory()
         @_widgetGroups[target.substr(target.indexOf('/bundles/') + 1)] = []
         Future.call(fs.readdir, target).then (items) =>
           futures = (@_processDir(path.join(target, item)) for item in items)
-          Future.sequence(futures)
+          Future.all(futures)
+        .then(_.noop)
       else if path.extname(target) == '.js'
         moduleName = target.slice(target.indexOf('/bundles/') + 1, -3)
         key = path.dirname(moduleName)
@@ -46,7 +47,7 @@ class ByWidgetGroupDetector
       futures = for bundle in bundles
         @_processDir(path.join(@targetDir, 'public/bundles', bundle, 'widgets'))
           .catchIf (err) -> err.code == 'ENOENT' # the bundle may not have 'widgets' folder
-      Future.sequence(futures)
+      Future.all(futures)
     .then =>
       resultGroups = []
       for gr, items of @_widgetGroups

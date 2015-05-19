@@ -32,7 +32,7 @@ class Optimizer
   run: ->
     start = process.hrtime()
 
-    zDirFuture = (if @params.clean then rmrf(@_zDir) else Future.resolved()).flatMap =>
+    zDirFuture = (if @params.clean then rmrf(@_zDir) else Future.resolved()).then =>
       Future.call(mkdirp, @_zDir)
 
     cssOptimizerPromise =
@@ -49,17 +49,19 @@ class Optimizer
       else
         Future.resolved({})
 
-    jsOptimizerPromise.zip(cssOptimizerPromise).flatMap (jsGroupMap, cssGroupMap) =>
+    Future.all([jsOptimizerPromise, cssOptimizerPromise]).spread (jsGroupMap, cssGroupMap) =>
       console.log "Generating browser-init script..."
       browserInitGenerator.generate(@params, jsGroupMap, cssGroupMap)
-    .flatMap (browserInitScriptString) =>
+    .then (browserInitScriptString) =>
       fileName = sha1(browserInitScriptString)
-      Future.call(fs.writeFile, "#{@_zDir}/#{fileName}.js", browserInitScriptString)
-        .zip(Future.call(fs.writeFile, "#{@_zDir}/browser-init.id", fileName))
-    .failAloud()
-    .done ->
+      Future.all [
+        Future.call(fs.writeFile, "#{@_zDir}/#{fileName}.js", browserInitScriptString)
+        Future.call(fs.writeFile, "#{@_zDir}/browser-init.id", fileName)
+      ]
+    .then ->
       diff = process.hrtime(start)
       console.log "Optimization complete in #{ (diff[0] * 1e9 + diff[1]) / 1e6 } ms"
+    .failAloud('Optimizer::run')
 
 
 
