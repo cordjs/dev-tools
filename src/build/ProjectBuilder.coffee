@@ -311,6 +311,37 @@ class ProjectBuilder extends EventEmitter
     @watcher.addDir(dir) if @params.watch
 
 
+  buildIndex: ->
+    ###
+    Builds only `index.html` file for phonegap application.
+    This task is need to be run after cordjs optimizer with --remove-sources option
+     to avoid rebuilding project due to removed js sources.
+    Project need to be completely build before this command can be run.
+    ###
+    if @params.indexPageWidget
+      start = process.hrtime()
+      requirejsConfig(@params.targetDir).then =>
+        info =
+          isIndexPage: true
+          configName: @params.config
+        buildManager.createTask(@params.indexPageWidget, @params.baseDir, @params.targetDir, info)
+
+      .then -> 'completed'
+      .catch (err) ->
+        console.error "Build error", err, err.stack
+        'failed'
+      .then (verb) =>
+        diff = process.hrtime(start)
+        console.log "Build #{verb} in #{ parseFloat((diff[0] * 1e9 + diff[1]) / 1e9).toFixed(3) } s"
+        if verb == 'completed'
+          buildManager.stop()
+          @emit 'complete'
+      .failAloud('ProjectBuilder::buildIndex')
+
+    else
+      console.error "--index (-I) param is required for the 'buildIndex' command!"
+
+
 
 sourceModified = (file, srcStat, targetDir, info) ->
   ###

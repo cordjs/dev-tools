@@ -31,6 +31,19 @@ exports.main = ->
       .failAloud()
 
 
+    buildIndex: (options) ->
+      ###
+      Builds only index.html file.
+      ###
+      handleChdir(options)
+      buildOptions = normalizeBuildOptions(options)
+      buildOptions.config = options.config
+
+      builder = new ProjectBuilder(buildOptions)
+      builder.buildIndex()
+      return
+
+
     run: (options) ->
       ###
       Builds project and starts cordjs server
