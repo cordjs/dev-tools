@@ -38,7 +38,7 @@ purgeCssFiles = (targetDir, groupMap) ->
   files = Object.keys(groupMap)
   removePromises =
     for relative in files
-      Future.call(fs.unlink, "#{targetDir}/public#{relative}")
+      Future.call(fs.unlink, "#{targetDir}/public/#{relative}")
   Future.all(removePromises).then -> return
 
 

@@ -119,12 +119,12 @@ class CssOptimizer
     removePromises = []
     futures = for file, j in cssFiles
       do (file, j) =>
-        filePath = "#{@params.targetDir}/public#{file}"
+        filePath = "#{@params.targetDir}/public/#{file}"
         Future.call(fs.readFile, filePath, 'utf8').then (origCss) =>
           removePromises.push(Future.call(fs.unlink, filePath))  if @params.removeSources
           # replacing relative urls
           fileBaseUrl = path.dirname(file)
-          css = origCss.replace(relativeReplaceRe, "url(\"#{fileBaseUrl}/$1\")")
+          css = origCss.replace(relativeReplaceRe, "url(\"../../#{fileBaseUrl}/$1\")")
 
           # header comment for debugging
           css = "/* #{file} */\n\n#{css}\n"
