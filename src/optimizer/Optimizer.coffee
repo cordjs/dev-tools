@@ -51,17 +51,46 @@ class Optimizer
 
     Future.all([jsOptimizerPromise, cssOptimizerPromise]).spread (jsGroupMap, cssGroupMap) =>
       console.log "Generating browser-init script..."
-      browserInitGenerator.generate(@params, jsGroupMap, cssGroupMap)
-    .then (browserInitScriptString) =>
-      fileName = sha1(browserInitScriptString)
+      browserInitPromise =
+        browserInitGenerator.generate(@params, jsGroupMap, cssGroupMap).then (browserInitScriptString) =>
+          fileName = sha1(browserInitScriptString)
+          Future.all [
+            Future.call(fs.writeFile, "#{@_zDir}/#{fileName}.js", browserInitScriptString)
+            Future.call(fs.writeFile, "#{@_zDir}/browser-init.id", fileName)
+          ]
       Future.all [
-        Future.call(fs.writeFile, "#{@_zDir}/#{fileName}.js", browserInitScriptString)
-        Future.call(fs.writeFile, "#{@_zDir}/browser-init.id", fileName)
+        browserInitPromise
+        @_saveGroupMapCacheFile(jsGroupMap, cssGroupMap)
       ]
     .then ->
       diff = process.hrtime(start)
       console.log "Optimization complete in #{ (diff[0] * 1e9 + diff[1]) / 1e6 } ms"
     .failAloud('Optimizer::run')
+
+
+  _saveGroupMapCacheFile: (jsGroupMap, cssGroupMap) ->
+    ###
+    Saves optimizer's computed groups mapping into the cache file for later use by `purgeOptimizedSources` command.
+    @param {Object} jsGroupMap
+    @param {Object} cssGroupMap
+    @return {Future<undefined>}
+    ###
+    jsToGroup = {}
+    for groupId, urls of jsGroupMap
+      for file in urls
+        jsToGroup[file] = groupId
+
+    cssToGroup = {}
+    for groupId, urls of cssGroupMap
+      for css in urls
+        cssToGroup[css] = groupId
+
+    mergedMap =
+      js: jsToGroup
+      css: cssToGroup
+
+    fileName = "#{@params.targetDir}/conf/optimizer-group-cache-generated.js"
+    Future.call(fs.writeFile, fileName, "module.exports = #{ JSON.stringify(mergedMap, null, 2) };")
 
 
 

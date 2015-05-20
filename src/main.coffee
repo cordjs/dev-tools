@@ -6,6 +6,7 @@ preparePath = require './utils/fsPreparePath'
 
 cliParser            = require './cli-parser'
 Optimizer            = require './optimizer/Optimizer'
+purgeSources         = require './optimizer/purgeSources'
 ProjectBuilder       = require './build/ProjectBuilder'
 ServerProcessManager = require './server/ServerProcessManager'
 
@@ -69,6 +70,12 @@ exports.main = ->
         jsMinify: not options.disableJsMinify
         removeSources: !!options.removeSources
       optimizer.run()
+
+
+    purgeOptimizedSources: (options) ->
+      handleChdir(options)
+      purgeSources("#{ preparePath(process.cwd()) }/#{ options.out }")
+
 
 
     clean: (options) ->

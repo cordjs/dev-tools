@@ -89,4 +89,12 @@ exports.run = (actionCallbacks) ->
     .option('--remove-sources', 'remove source files that are merged and minified.')
     .action(actionCallbacks.optimize)
 
+  program
+    .command('purgeOptimizedSources')
+    .description('remove source js- and css-files that has been merged into groups and obfuscated')
+    .option('-o, --out <dir>', 'output (target) directory relative to project root. defaults to "' +
+                               DEFAULT_OUTPUT_DIR + '"', DEFAULT_OUTPUT_DIR)
+    .action(actionCallbacks.purgeOptimizedSources)
+
+
   program.parse(process.argv)
