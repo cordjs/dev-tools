@@ -1,12 +1,13 @@
 path      = require 'path'
-requirejs = require 'requirejs'
+
+requirejs = require process.cwd() + '/node_modules/requirejs'
 
 Future = require './utils/Future'
 
 
-appConfFile    = 'app/application'
+appConfFile = 'app/application'
 
-savedBundlesFuture = null
+savedBundlesPromise = null
 
 exports.getBundles = (targetDir) ->
   ###
@@ -14,13 +15,13 @@ exports.getBundles = (targetDir) ->
   @param String targetDir directory with compiled cordjs project
   @return Future[Array[String]]
   ###
-  if savedBundlesFuture
-    savedBundlesFuture
+  if savedBundlesPromise
+    savedBundlesPromise
   else
     requirejs.config
       baseUrl: path.join(targetDir, 'public')
 
-    savedBundlesFuture = Future.require(appConfFile).map (bundles) ->
-      [['cord/core'].concat(bundles)] # core is always enabled
+    savedBundlesPromise = Future.require(appConfFile).then (bundles) ->
+      ['cord/core'].concat(bundles) # core is always enabled
 
-    savedBundlesFuture
+    savedBundlesPromise

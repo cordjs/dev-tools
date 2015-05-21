@@ -1,8 +1,11 @@
 path           = require 'path'
 fs             = require 'fs'
-requirejs      = require 'requirejs'
 {EventEmitter} = require 'events'
 _              = require 'underscore'
+
+preparePath    = require '../utils/fsPreparePath'
+
+requirejs = require process.cwd() + '/node_modules/requirejs'
 
 Future    = require '../utils/Future'
 rmrf      = require '../utils/rmrf'
@@ -31,7 +34,7 @@ walkerFilter = (dir, name) ->
     if ext == '.orig' or ext.substr(-1) == '~'
       false
     else
-      dir.indexOf(path.sep + '.') == -1
+      dir.indexOf('/.') == -1
   res
 
 
@@ -43,7 +46,9 @@ class ProjectBuilder extends EventEmitter
   _emitCompletePromise: null
 
   constructor: (@params) ->
+    @params.baseDir = preparePath(@params.baseDir)
     fileInfo.setDirs(@params.baseDir, @params.targetDir)
+    buildManager.generateSourceMap = @params.map
     @setupWatcher() if @params.watch
 
 
@@ -60,22 +65,26 @@ class ProjectBuilder extends EventEmitter
 
 
     scanDir = (dir, payloadCallback) =>
+      dir = preparePath(dir)
       completePromise.done => @watchDir(dir)
 
       completePromise.fork()
       walker = fswalker(dir, filter: walkerFilter)
       walker.on 'file', (root, stat, next) =>
+        root = preparePath(root)
         relativeDir = root.substr(relativePos)
         payloadCallback("#{relativeDir}/#{stat.name}", stat)
         setTimeout next, 0
 
       walker.on 'symbolicLink', (root, stat, next) =>
+        root = preparePath(root)
         relativeDir = root.substr(relativePos)
         payloadCallback("#{relativeDir}/#{stat.name}", stat)
         next()
 
       if (@params.watch)
         walker.on 'directory', (root, stat, next) =>
+          root = preparePath(root)
           completePromise.done => @watchDir("#{root}/#{stat.name}")
           next()
 
@@ -89,42 +98,44 @@ class ProjectBuilder extends EventEmitter
       scanDir dir, (relativeName, stat) =>
         info = fileInfo.getFileInfo(relativeName)
         completePromise.fork()
-        sourceModified(relativeName, stat, @params.targetDir, info).map (modified) =>
+        sourceModified(relativeName, stat, @params.targetDir, info).then (modified) =>
           if modified
             completePromise.when(
               buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
             )
           completePromise.resolve()
+          return
 
 
     scanCore = =>
       scanDir "#{ @params.baseDir }/public/bundles/cord/core", (relativeName, stat) =>
         info = fileInfo.getFileInfo(relativeName, 'cord/core')
         completePromise.fork()
-        sourceModified(relativeName, stat, @params.targetDir, info).map (modified) =>
+        sourceModified(relativeName, stat, @params.targetDir, info).then (modified) =>
           if modified
             if info.inWidgets
               if info.isWidget
-                task = corePromise.flatMap =>
+                corePromise.then =>
                   buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
-                completePromise.when(task)
-                widgetClassesPromise.when(task)
+                .link(completePromise)
+                .link(widgetClassesPromise)
               else if info.isWidgetTemplate
-                widgetClassesPromise.flatMap =>
+                widgetClassesPromise.then =>
                   buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
                 .link(completePromise)
               else if info.isStylus
-                pathUtilsPromise.flatMap =>
+                pathUtilsPromise.then =>
                   buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
                 .link(completePromise)
               else
                 buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
                   .link(completePromise)
             else if not (info.fileName == 'pathUtils.coffee' and info.lastDirName == 'requirejs')
-              task = buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
-              corePromise.when(task)
-              completePromise.when(task)
+              buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
+                .link(corePromise)
+                .link(completePromise)
           completePromise.resolve()
+          return
         .link(corePromise)
       .on 'end', ->
         corePromise.resolve()
@@ -136,15 +147,15 @@ class ProjectBuilder extends EventEmitter
       scanDir "#{ @params.baseDir }/public/bundles/#{ bundle }", (relativeName, stat) =>
         info = fileInfo.getFileInfo(relativeName, bundle)
         completePromise.fork()
-        sourceModified(relativeName, stat, @params.targetDir, info).map (modified) =>
+        sourceModified(relativeName, stat, @params.targetDir, info).then (modified) =>
           if modified
             if info.isWidget
-              task = corePromise.flatMap =>
+              corePromise.then =>
                 buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
-              completePromise.when(task)
-              widgetClassesPromise.when(task)
+              .link(completePromise)
+              .link(widgetClassesPromise)
             else if info.isWidgetTemplate
-              widgetClassesPromise.zip(nonWidgetFilesPromise).flatMap =>
+              Future.all([widgetClassesPromise, nonWidgetFilesPromise]).then =>
                 buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
               .link(completePromise)
             else if info.isCoffee and not info.inWidgets
@@ -152,13 +163,14 @@ class ProjectBuilder extends EventEmitter
                 .link(completePromise)
                 .link(nonWidgetFilesPromise)
             else if info.isStylus
-              pathUtilsPromise.flatMap =>
+              pathUtilsPromise.then =>
                 buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
               .link(completePromise)
             else
               buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
                 .link(completePromise)
           completePromise.resolve()
+          return
       .on 'end', ->
         widgetClassesPromise.resolve()
         nonWidgetFilesPromise.resolve()
@@ -182,12 +194,20 @@ class ProjectBuilder extends EventEmitter
     buildManager.createTask('server.coffee', @params.baseDir, @params.targetDir, fileInfo.getFileInfo('server.coffee'))
       .link(completePromise)
 
+    buildManager.createTask(
+      'optimizer-predefined-groups.coffee', @params.baseDir, @params.targetDir,
+      fileInfo.getFileInfo('optimizer-predefined-groups.coffee')
+    ).catch ->
+      return # ignore errors
+    .link(completePromise)
+
     appConfPromise.then =>
       scanCore()
       requirejs.config
         baseUrl: @params.targetDir
       appConfig.getBundles(@params.targetDir)
     .then (bundles) ->
+      bundles = bundles.filter (n) -> n != 'cord/core'
       fileInfo.setBundles(bundles)
       scanBundle(bundle) for bundle in bundles
       widgetClassesPromise.resolve()
@@ -201,8 +221,11 @@ class ProjectBuilder extends EventEmitter
         corePromise.then =>
           requirejsConfig(@params.targetDir)
         .then ->
-          Future.require('cord!requirejs/cord-w').zip(completePromise)
-        .then (cord) =>
+          Future.all [
+            Future.require('cord!requirejs/cord-w') # todo: find out - what is it for? (introduced with phonegap support)
+            completePromise
+          ]
+        .then =>
           info =
             isIndexPage: true
             configName: @params.config
@@ -214,13 +237,16 @@ class ProjectBuilder extends EventEmitter
 
     fullCompletePromise
       .then -> 'completed'
-      .catch -> 'failed'
+      .catch (err) ->
+        console.error "Build error", err, err.stack
+        'failed'
       .then (verb) =>
         diff = process.hrtime(start)
         console.log "Build #{verb} in #{ parseFloat((diff[0] * 1e9 + diff[1]) / 1e9).toFixed(3) } s"
         if verb == 'completed'
           buildManager.stop()
           @emit 'complete'
+      .failAloud('ProjectBuilder::build')
 
 
   setupWatcher: ->
@@ -235,12 +261,12 @@ class ProjectBuilder extends EventEmitter
           @_emitCompletePromise = null
       else
         @_emitCompletePromise.fork()
-      currentSessionPromise = @_previousSessionPromise.flatMap =>
+      currentSessionPromise = @_previousSessionPromise.then =>
         rmList = for removed in _.sortBy(changes.removed, (f) -> f.length).reverse()
           console.log "removing #{removed}..."
           rmrf(fileInfo.getTargetForSource(removed)).failAloud()
 
-        Future.sequence(rmList).flatMap =>
+        Future.all(rmList).then =>
           buildSession = new BuildSession(@params)
           sessionCompletePromise = Future.single()
 
@@ -258,7 +284,7 @@ class ProjectBuilder extends EventEmitter
               next()
 
             walker.on 'directory', (root, stat, next) =>
-              sessionCompletePromise.done => @watchDir("#{root}/#{stat.name}")
+              sessionCompletePromise.done => @watchDir(preparePath("#{root}/#{stat.name}"))
               next()
 
             walker.on 'end', ->
@@ -273,16 +299,47 @@ class ProjectBuilder extends EventEmitter
               buildSession.add(file)
             else if stat.isDirectory()
               scanCompletePromise.when(scanDir(file))
-          scanCompletePromise.flatMap ->
+          scanCompletePromise.then ->
             sessionCompletePromise.when(buildSession.complete())
-          .done =>
-            @_emitCompletePromise.resolve()
+        .then =>
+          @_emitCompletePromise.resolve()
 
       @_previousSessionPromise = currentSessionPromise
 
 
   watchDir: (dir) ->
     @watcher.addDir(dir) if @params.watch
+
+
+  buildIndex: ->
+    ###
+    Builds only `index.html` file for phonegap application.
+    This task is need to be run after cordjs optimizer with --remove-sources option
+     to avoid rebuilding project due to removed js sources.
+    Project need to be completely build before this command can be run.
+    ###
+    if @params.indexPageWidget
+      start = process.hrtime()
+      requirejsConfig(@params.targetDir).then =>
+        info =
+          isIndexPage: true
+          configName: @params.config
+        buildManager.createTask(@params.indexPageWidget, @params.baseDir, @params.targetDir, info)
+
+      .then -> 'completed'
+      .catch (err) ->
+        console.error "Build error", err, err.stack
+        'failed'
+      .then (verb) =>
+        diff = process.hrtime(start)
+        console.log "Build #{verb} in #{ parseFloat((diff[0] * 1e9 + diff[1]) / 1e9).toFixed(3) } s"
+        if verb == 'completed'
+          buildManager.stop()
+          @emit 'complete'
+      .failAloud('ProjectBuilder::buildIndex')
+
+    else
+      console.error "--index (-I) param is required for the 'buildIndex' command!"
 
 
 
@@ -297,9 +354,9 @@ sourceModified = (file, srcStat, targetDir, info) ->
   @return Future[Boolean]
   ###
   dstPath = path.join(targetDir, fileInfo.getBuildDestinationFile(file, info))
-  Future.call(fs.stat, dstPath).map (dstStat) ->
+  Future.call(fs.stat, dstPath).then (dstStat) ->
     srcStat.mtime.getTime() > dstStat.mtime.getTime()
-  .mapFail ->
+  .catch ->
     true
 
 

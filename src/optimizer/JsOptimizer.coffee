@@ -39,23 +39,31 @@ class JsOptimizer
 
 
   run: ->
+    # will need it later
+    @_requireConfig = requirejsConfig.collect(@params.targetDir)
+
     statFile = 'require-stat.json'
-    Future.call(fs.readFile, statFile).mapFail ->
+    statPromise = Future.call(fs.readFile, statFile).catch ->
       console.warn "Error reading require-stat file '#{statFile}'. Going to group only by widget..."
       '{}'
-    .flatMap (data) =>
-      @_requireConfig = requirejsConfig.collect(@params.targetDir)
-      stat = JSON.parse(data)
+    .then (data) =>
+      JSON.parse(data)
+
+    predefinedPromise = Future.require("#{@params.targetDir}/optimizer-predefined-groups").catch (err) ->
+      console.warn "Error reading predefined-groups file: #{err}!"
+      {}
+
+    Future.all([statPromise, predefinedPromise]).spread (stat, predefinedGroupsInfo) =>
       console.log "Calculating JS group optimization..."
-      @_generateOptimizationMap(stat)
-    .flatMap (groupMap) =>
+      @_generateOptimizationMap(stat, predefinedGroupsInfo)
+    .then (groupMap) =>
       @_generateOptimizedFiles(groupMap)
-    .mapFail (e) ->
-      console.warn "JS group optimization failed! Reason: #{ e }. Skipping..."
+    .catch (e) ->
+      console.warn "JS group optimization failed! Reason: #{ e }. Skipping...", e.stack
       {}
 
 
-  _generateOptimizationMap: (stat) ->
+  _generateOptimizationMap: (stat, predefinedGroupsInfo) ->
     ###
     Analizes collected requirejs stats and tryes to group modules together in optimized way.
     @param Map[String -> Array[String]] stat collected statistics of required files per page
@@ -64,8 +72,12 @@ class JsOptimizer
     iterations = 1
     groupRepo = new GroupRepo
 
+    @_createPredefinedGroups(predefinedGroupsInfo, groupRepo)
+    @_removePredefinedGroupsFromStat(stat, predefinedGroupsInfo)
+    @_removeBrowserInitFromStat(stat)
+
     widgetDetector = new ByWidgetGroupDetector(groupRepo, @params.targetDir)
-    widgetDetector.process(stat).map (stat) ->
+    widgetDetector.process(stat).then (stat) ->
       while iterations--
         console.log "100% correlation JS group detection..."
         corrDetector = new CorrelationGroupDetector(groupRepo)
@@ -84,10 +96,41 @@ class JsOptimizer
           groupRepo.removeGroupDeep(groupId) if group
 
       # adding unused widget groups to the result map
-      for groupId, group of groupRepo.getGroups()
+      for groupId, group of groupRepo.getGroups() when not group.isSubGroup()
         resultMap[groupId] = _.uniq(group.getModules())
 
       resultMap
+
+
+  _createPredefinedGroups: (predefinedGroupsInfo, groupRepo) ->
+    ###
+    Registers predefined groups in group repository
+    ###
+    for name, modules of predefinedGroupsInfo
+      groupId = 'predefined-' + sha1(modules.sort().join()) + '-' + name
+      groupRepo.createGroup(groupId, modules)
+    return
+
+
+  _removePredefinedGroupsFromStat: (stat, predefinedGroupsInfo) ->
+    ###
+    Removes modules of predefined groups from the stat to avoid mixing them up with another groups
+    ###
+    removeModules = []
+    for name, modules of predefinedGroupsInfo
+      removeModules.push(m) for m in modules
+    for page, modules of stat
+      stat[page] = _.difference(modules, removeModules)
+    return
+
+
+  _removeBrowserInitFromStat: (stat) ->
+    ###
+    Removes browser-init script occurences from stat as it never included in any group
+    ###
+    for page, modules of stat
+      modules.shift() if modules[0].indexOf('bundles/cord/core/init/browser-init') != -1
+    return
 
 
   _generateOptimizedFiles: (groupMap) ->
@@ -96,7 +139,7 @@ class JsOptimizer
     @param Map[String -> Array[String]] groupMap optimized group map
     @return Future
     ###
-    @_requireConfig.flatMap (requireConf) =>
+    @_requireConfig.then (requireConf) =>
       console.log "Merging JS group files..."
       @_mergeGroups(groupMap, requireConf)
 
@@ -109,16 +152,14 @@ class JsOptimizer
     @param Object requireConf requirejs configuration object
     @return Future[Map[String -> Array[String]]
     ###
-    result = new Future(1)
     resultMap = {}
-    for groupId, modules of groupMap
-      do (modules) =>
-        result.fork()
+    mergePromises =
+      for groupId, modules of groupMap
         # non-amd modules must be reordered according to their dependencies to work properly in merged file
-        @_mergeGroup(@_reorderShimModules(modules, requireConf.shim), requireConf).done (fileName, existingModules) ->
+        @_mergeGroup(@_reorderShimModules(modules, requireConf.shim), requireConf).spread (fileName, existingModules) ->
           resultMap[fileName] = existingModules
-          result.resolve()
-    result.resolve().map -> resultMap
+          return
+    Future.all(mergePromises).then -> resultMap
 
 
   _mergeGroup: (modules, requireConf) ->
@@ -132,13 +173,15 @@ class JsOptimizer
     existingModules = []
     contentArr = []
     csUtilHit = {}
+    removePromises = []
     futures = for module, j in modules
       do (module, j) =>
         moduleFile = if requireConf.paths[module]
           "#{@params.targetDir}/public/#{requireConf.paths[module]}.js"
         else
           "#{@params.targetDir}/public/#{module}.js"
-        Future.call(fs.readFile, moduleFile, 'utf8').map (origJs) =>
+        Future.call(fs.readFile, moduleFile, 'utf8').then (origJs) =>
+          removePromises.push(Future.call(fs.unlink, moduleFile))  if @params.removeSources
           # inserting module name into amd module definitions
           js = origJs
             .replace('define([', "define('#{module}',[")
@@ -165,11 +208,11 @@ class JsOptimizer
           contentArr[j] = js
           existingModules.push(module)
           true
-        .mapFail ->
+        .catch ->
           # ignoring absent files (it may be caused by the obsolete stat-file)
           false
 
-    Future.sequence(futures).zip(@zDirFuture).flatMap =>
+    savePromise = Future.all([Future.all(futures), @zDirFuture]).then =>
       resultCode = ''
 
       # adding one instance of coffee-script utility functions cutted above
@@ -185,9 +228,16 @@ class JsOptimizer
         .code
       fileName = sha1(mergedContent)
       console.log "Saving #{fileName}.js ..."
-      Future.call(fs.writeFile, "#{@_zDir}/#{ fileName }.js", mergedContent).map ->
+      Future.call(fs.writeFile, "#{@_zDir}/#{ fileName }.js", mergedContent).then ->
         [fileName, existingModules]
-    .failAloud()
+
+    Future.all [
+      savePromise
+      Future.all(removePromises)
+    ]
+    .spread (savePromiseResult) ->
+      savePromiseResult
+    .failAloud('JsOptimizer::_mergeGroup')
 
 
   _generateShimExportsFn: (shimConfig) ->

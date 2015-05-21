@@ -23,28 +23,58 @@ class CompileCoffeeScript extends BuildTask
     dstName = if @params.info.isAppConfig then 'application' else basename
 
     src = "#{ @params.baseDir }/#{ @params.file }"
-    dst = "#{ @params.targetDir }/#{ dirname }/#{ dstName }.js"
+    dstDir = "#{ @params.targetDir }/#{ dirname }"
+    dstBasename = "#{ dstDir}/#{ dstName }"
 
-    Future.call(fs.readFile, src, 'utf8').map (coffeeString) =>
+    compilePromise = Future.call(fs.readFile, src, 'utf8').then (coffeeString) =>
       coffeeString = @preCompilerCallback(coffeeString) if @preCompilerCallback
-      js = coffee.compile coffeeString,
+      answer = coffee.compile coffeeString,
+        filename: src
+        literate: false
+        header: true
         compile: true
         bare: true
+        sourceMap: @params.generateSourceMap
+        jsPath: "#{ dstBasename }.js"
+        sourceRoot: "./"
+        sourceFiles: [path.relative(dstDir, "#{@params.baseDir}/#{dirname}")+"/#{basename}.coffee"]
+        generatedFile: dstName+'.js'
+
+      if not @params.generateSourceMap
+        js = answer
+        answer = {}
+        answer.js = js
+        answer.v3SourceMap = undefined
+      answer.coffeeString = coffeeString
       inf = @params.info
       if inf.isWidget or inf.isBehaviour or inf.isModelRepo or inf.isCollection
         name = inf.fileNameWithoutExt
-        js = js.replace("return #{name};\n", "#{name}.__name = '#{name}';\n\n   return #{name};\n")
-      js = @postCompilerCallback(js) if @postCompilerCallback?
-      js
-    .zip(Future.call(mkdirp, path.dirname(dst))).flatMap (jsString) ->
-      Future.call(fs.writeFile, dst, jsString)
-    .flatMapFail (err) ->
+        answer.js = answer.js.replace("return #{name};\n", "#{name}.__name = '#{name}';\n\n   return #{name};\n")
+      answer.js = @postCompilerCallback(answer.js) if @postCompilerCallback?
+      if @params.generateSourceMap
+        answer.js = "#{answer.js}\n//# sourceMappingURL=#{dstName}.map"
+      answer
+
+    Future.all [
+      compilePromise
+      Future.call(mkdirp, path.dirname(dstBasename))
+    ]
+    .spread (answer) =>
+      Future.all [
+        Future.call(fs.writeFile, "#{dstBasename}.js", answer.js)
+        if undefined != answer.v3SourceMap
+          Future.call(fs.writeFile, "#{dstBasename}.map", answer.v3SourceMap)
+        else
+          undefined
+      ]
+    .catch (err) ->
       if err instanceof SyntaxError and err.location?
         console.error "CoffeeScript syntax error: #{err.message}\n" +
           "#{src}:#{err.location.first_line}:#{err.location.first_column}\n"
-        Future.rejected(new BuildTask.ExpectedError(err))
+        throw new BuildTask.ExpectedError(err)
       else
-        Future.rejected(err)
+        throw err
+    .then -> return
     .link(@readyPromise)
 
 

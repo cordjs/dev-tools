@@ -8,7 +8,7 @@ class BuildWorkerManager
   ###
 
   # maximum number of unacknowleged tasks after which the worker stops accepting new tasks
-  @MAX_SENDING_TASKS = 30000
+  @MAX_SENDING_TASKS = 50
   # number of milliseconds of idle state (without active tasks) after which the worker is auto-stopped
   @IDLE_STOP_TIMEOUT = 5000
   # worker id counter
@@ -35,7 +35,9 @@ class BuildWorkerManager
 
   constructor: (@manager) ->
     @id = ++BuildWorkerManager._idCounter
-    @_process = fork(__dirname + '/build-worker.js')
+    # All child processes should be started without debug!
+    childExecArgv = process.execArgv.filter (arg) -> -1 == arg.indexOf('--debug')
+    @_process = fork(__dirname + '/build-worker.js', execArgv: childExecArgv)
     @_acceptReady = Future.resolved(this)
     @_tasks = {}
     # worker process communication callback
@@ -64,7 +66,7 @@ class BuildWorkerManager
 
   addTask: (taskParams) ->
     ###
-    @return Future[Nothing]
+    @return Future<undefined>
     ###
     if @canAcceptTask()
       @_tasks[taskParams.id] = Future.single()
@@ -78,8 +80,12 @@ class BuildWorkerManager
       @_workload += taskWorkload
       @_tasks[taskParams.id].finally =>
         @_workload -= taskWorkload
+        @_sendingTask--
+        @_acceptReady.resolve(this)  if not @_acceptReady.completed() and @canAcceptTask()
     else
-      throw new Error("Can't accept task now!")
+      e = new Error("Can't accept task now!")
+      e.overwhelmed = true
+      throw e
 
 
   getTaskWorkload: (taskParams) ->

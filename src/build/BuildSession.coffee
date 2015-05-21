@@ -1,6 +1,7 @@
-fs = require('fs')
-path = require('path')
-requirejs = require('requirejs')
+fs   = require 'fs'
+path = require 'path'
+
+requirejs = require process.cwd() + '/node_modules/requirejs'
 
 Future = require('../utils/Future')
 
@@ -51,8 +52,8 @@ class BuildSession
     else if file == BuildSession.PATH_UTILS_FILE
       @_handleFile(file, 'cord/core').link(@_pathUtilsPromise)
     else
-      @_appConfPromise.andThen =>
-        @_handleFile(file, fileInfo.detectBundle(file)).mapFail ->
+      @_appConfPromise.finally =>
+        @_handleFile(file, fileInfo.detectBundle(file)).catch ->
           console.error "Build task failed for\n#{file}"
           null
         .link(@_completePromise)
@@ -82,15 +83,15 @@ class BuildSession
   _handleFile: (file, bundle) ->
     info = fileInfo.getFileInfo(file, bundle)
     if info.isStylus
-      @_pathUtilsPromise.flatMap =>
+      @_pathUtilsPromise.then =>
         @_createTask(file, info)
     else if info.inWidgets
       if info.isWidget
-        @_corePromise.flatMap =>
+        @_corePromise.then =>
           @_createTask(file, info)
         .link(@_widgetClassesPromise)
       else if info.isWidgetTemplate
-        @_widgetClassesPromise.flatMap =>
+        @_widgetClassesPromise.then =>
           @_createTask(file, info)
       else
         @_createTask(file, info)
@@ -101,11 +102,11 @@ class BuildSession
 
 
   _createTask: (file, info) ->
-    @_sourceModified(file, info).flatMap (modified) =>
+    @_sourceModified(file, info).then (modified) =>
       if modified
         buildManager.createTask(file, @params.baseDir, @params.targetDir, info)
       else
-        Future.resolved()
+        return
 
 
   _sourceModified: (file, info) ->
@@ -118,9 +119,13 @@ class BuildSession
     ###
     srcPath = path.join(@params.baseDir, file)
     dstPath = path.join(@params.targetDir, fileInfo.getBuildDestinationFile(file, info))
-    Future.call(fs.stat, srcPath).zip(Future.call(fs.stat, dstPath)).map (srcStat, dstStat) ->
+    Future.all [
+      Future.call(fs.stat, srcPath)
+      Future.call(fs.stat, dstPath)
+    ]
+    .spread (srcStat, dstStat) ->
       srcStat.mtime.getTime() > dstStat.mtime.getTime()
-    .mapFail ->
+    .catch ->
       true
 
 
