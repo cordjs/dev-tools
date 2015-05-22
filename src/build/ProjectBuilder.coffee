@@ -3,7 +3,7 @@ fs             = require 'fs'
 {EventEmitter} = require 'events'
 _              = require 'underscore'
 
-preparePath    = require '../utils/fsPreparePath'
+normalizePathSeparator    = require '../utils/fsNormalizePathSeparator'
 
 requirejs = require process.cwd() + '/node_modules/requirejs'
 
@@ -46,7 +46,7 @@ class ProjectBuilder extends EventEmitter
   _emitCompletePromise: null
 
   constructor: (@params) ->
-    @params.baseDir = preparePath(@params.baseDir)
+    @params.baseDir = normalizePathSeparator(@params.baseDir)
     fileInfo.setDirs(@params.baseDir, @params.targetDir)
     buildManager.generateSourceMap = @params.map
     @setupWatcher() if @params.watch
@@ -65,26 +65,26 @@ class ProjectBuilder extends EventEmitter
 
 
     scanDir = (dir, payloadCallback) =>
-      dir = preparePath(dir)
+      dir = normalizePathSeparator(dir)
       completePromise.done => @watchDir(dir)
 
       completePromise.fork()
       walker = fswalker(dir, filter: walkerFilter)
       walker.on 'file', (root, stat, next) =>
-        root = preparePath(root)
+        root = normalizePathSeparator(root)
         relativeDir = root.substr(relativePos)
         payloadCallback("#{relativeDir}/#{stat.name}", stat)
         setTimeout next, 0
 
       walker.on 'symbolicLink', (root, stat, next) =>
-        root = preparePath(root)
+        root = normalizePathSeparator(root)
         relativeDir = root.substr(relativePos)
         payloadCallback("#{relativeDir}/#{stat.name}", stat)
         next()
 
       if (@params.watch)
         walker.on 'directory', (root, stat, next) =>
-          root = preparePath(root)
+          root = normalizePathSeparator(root)
           completePromise.done => @watchDir("#{root}/#{stat.name}")
           next()
 
@@ -275,7 +275,7 @@ class ProjectBuilder extends EventEmitter
               next()
 
             walker.on 'directory', (root, stat, next) =>
-              sessionCompletePromise.done => @watchDir(preparePath("#{root}/#{stat.name}"))
+              sessionCompletePromise.done => @watchDir(normalizePathSeparator("#{root}/#{stat.name}"))
               next()
 
             walker.on 'end', ->
