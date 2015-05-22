@@ -83,13 +83,13 @@ class ProjectWatcher extends EventEmitter
     @param String dir absolute directory path
     @return Future[Map[String -> StatInfo]]
     ###
-    Future.call(fs.readdir, dir).flatMap (dirList) ->
+    Future.call(fs.readdir, dir).then (dirList) ->
       fList = for name in dirList
         do (name) ->
-          Future.call(fs.lstat, path.join(dir, name)).map (stat) ->
+          Future.call(fs.lstat, path.join(dir, name)).then (stat) ->
             stat.name = name
             stat
-      Future.sequence(fList).map (statList) ->
+      Future.all(fList).then (statList) ->
         result = {}
         for stat in statList
           result[stat.name] = stat
@@ -131,17 +131,16 @@ class ProjectWatcher extends EventEmitter
     @return Future
     ###
     #console.log 'aggregated watch event', _.keys(dirList).map (d) => d.substr(@baseDir.length + 1)
-    result = new Future
+    resultPromise = new Future
     summaryChangeMap = {}
     summaryRemoveList = []
     for dir, watchInfo of dirList
       do (dir, watchInfo) =>
-        result.fork()
         newContents = @_readdir(dir)
         oldContents = watchInfo.contents
         watchInfo.contents = newContents
         # get current contents of the directory and calculate the difference with the previous contents
-        oldContents.zip(newContents).done (oldMap, newMap) =>
+        Future.all([oldContents, newContents]).spread (oldMap, newMap) =>
           oldItems = Object.keys(oldMap)
           newItems = Object.keys(newMap)
 
@@ -178,22 +177,24 @@ class ProjectWatcher extends EventEmitter
 
           _.extend(summaryChangeMap, changeMap)
           summaryRemoveList = summaryRemoveList.concat(removeListFiltered)
+          return
 
-          result.resolve()
-
-        .fail (err) =>
+        .catch (err) =>
           if err.code == 'ENOENT'
             # in case of recursive directory removing this error is usual and actually not an error
             @_stopWatching(watchInfo)
-            result.resolve()
+            return
           else
             console.error "ERROR: readdir failed", watchInfo, err
             throw err
-    result.done =>
+        .link(resultPromise)
+
+    resultPromise.then =>
       if Object.keys(summaryChangeMap).length > 0 or summaryRemoveList.length > 0
         @emit 'change',
           removed: summaryRemoveList
           changed: summaryChangeMap
+      return
 
 
   _stopWatching: (watchInfo) ->

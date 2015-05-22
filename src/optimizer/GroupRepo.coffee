@@ -7,6 +7,7 @@ class OptimizerGroup
   _items: null
   _modules: null
   _subGroups: null
+  _isSubGroup: false
 
 
   constructor: (@repo, @id, items) ->
@@ -19,7 +20,8 @@ class OptimizerGroup
     @_modules = []
     @_subGroups = []
     for item in items
-      if group = repo.getGroup(item)
+      if group = @repo.getGroup(item)
+        group.markAsSubGroup()
         @_subGroups.push(group)
         @_modules = @_modules.concat(group.getModules())
       else
@@ -33,6 +35,12 @@ class OptimizerGroup
 
 
   getSubGroups: -> @_subGroups
+
+
+  markAsSubGroup: -> @_isSubGroup = true
+
+
+  isSubGroup: -> @_isSubGroup
 
 
 

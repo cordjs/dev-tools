@@ -37,33 +37,30 @@ class FsWalker extends EventEmitter
     @return Future completed when the given FS item is scanned and added to the event-emitter queue
     ###
     target = if name then path.join(root, name) else root
-    Future.call(fs.lstat, target).flatMap (stat) =>
+    Future.call(fs.lstat, target).then (stat) =>
       stat.name = name
       if stat.isDirectory()
-        Future.call(fs.readdir, target).flatMap (items) =>
+        Future.call(fs.readdir, target).then (items) =>
           futures = (@_walk(target, item) for item in items when @_filterFn(target, item))
           @_add('directory', root, stat) if name # not adding base directory
-          Future.sequence(futures)
+          Future.all(futures)
+        .then(_.noop)
       else if stat.isSymbolicLink()
         @_add('symbolicLink', root, stat)
-        Future.resolved()
       else if stat.isFile()
         @_add('file', root, stat)
-        Future.resolved()
       else
         # ignoring unusual file types
-        Future.resolved()
+        return
     # ignore suddenly removed files
-    .flatMapFail (err) ->
-      if err.code == 'ENOENT'
-        Future.resolved()
-      else
-        Future.rejected(err)
+    .catchIf (err) ->
+      err.code == 'ENOENT'
 
 
   _add: (type, root, stat) ->
     @_itemQueue.push([type, root, stat])
     @_next() if not @_active # initiate event-emitter chain if it's not active
+    return
 
 
   _next: => # fat-arrow is necessary here!

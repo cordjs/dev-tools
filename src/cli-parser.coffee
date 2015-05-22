@@ -53,6 +53,17 @@ exports.run = (actionCallbacks) ->
     .action(actionCallbacks.build)
 
   program
+    .command('buildIndex')
+    .description('build only `index.html` file')
+    .option('-I --index <widget-path>', '(required) full path (in CordJS notation) of the widget to be rendered ' +
+                                        'and saved as index.html (example - "/ns/bundle//StartPage")')
+    .option('-o, --out <dir>', 'output (target) directory relative to project root. defaults to "' +
+                               DEFAULT_OUTPUT_DIR + '"', DEFAULT_OUTPUT_DIR)
+    .option('-c, --config <name>', 'configuration file name. used to generate useful index.html. defaults to "' +
+                                   DEFAULT_CONFIG_NAME + '"', DEFAULT_CONFIG_NAME)
+    .action(actionCallbacks.buildIndex)
+
+  program
     .withBuildOptions('run')
     .description('build project and run cordjs server')
     .option('-w, --watch', 'watch for changes in source files, rebuild and restart server continuously')
@@ -75,6 +86,15 @@ exports.run = (actionCallbacks) ->
     .option('--disable-css-minify', 'do not minify (via clean-css) merged CSS files. By default CSS minification is enabled.')
     .option('--disable-js', 'do not perform JS group optimization. By default JS optimization is enabled.')
     .option('--disable-js-minify', 'do not minify (via uglify-js) merged javascript files. By default JS minification is enabled.')
+    .option('--remove-sources', 'remove source files that are merged and minified.')
     .action(actionCallbacks.optimize)
+
+  program
+    .command('purgeOptimizedSources')
+    .description('remove source js- and css-files that has been merged into groups and obfuscated')
+    .option('-o, --out <dir>', 'output (target) directory relative to project root. defaults to "' +
+                               DEFAULT_OUTPUT_DIR + '"', DEFAULT_OUTPUT_DIR)
+    .action(actionCallbacks.purgeOptimizedSources)
+
 
   program.parse(process.argv)

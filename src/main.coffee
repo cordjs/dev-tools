@@ -6,6 +6,7 @@ normalizePathSeparator = require './utils/fsNormalizePathSeparator'
 
 cliParser            = require './cli-parser'
 Optimizer            = require './optimizer/Optimizer'
+purgeSources         = require './optimizer/purgeSources'
 ProjectBuilder       = require './build/ProjectBuilder'
 ServerProcessManager = require './server/ServerProcessManager'
 
@@ -23,24 +24,39 @@ exports.main = ->
       buildOptions = normalizeBuildOptions(options)
       buildOptions.config = options.config
       cleanFuture = if buildOptions.clean then commands.clean(options) else Future.resolved()
-      cleanFuture.failAloud().then ->
+      cleanFuture.then ->
         builder = new ProjectBuilder(buildOptions)
         builder.build().fail ->
           process.exit(1) if not buildOptions.watch
         [builder, buildOptions]
+      .failAloud()
+
+
+    buildIndex: (options) ->
+      ###
+      Builds only index.html file.
+      ###
+      handleChdir(options)
+      buildOptions = normalizeBuildOptions(options)
+      buildOptions.config = options.config
+
+      builder = new ProjectBuilder(buildOptions)
+      builder.buildIndex()
+      return
 
 
     run: (options) ->
       ###
       Builds project and starts cordjs server
       ###
-      commands.build(options).failAloud().done (builder, buildOptions) ->
+      commands.build(options).spread (builder, buildOptions) ->
         serverOptions = normalizeServerOptions(options)
         serverProcessManager = new ServerProcessManager(_.extend(buildOptions, serverOptions))
         builder.on 'complete', ->
           console.log 'Restarting...'
           console.log '---------------------'
           serverProcessManager.restart()
+      .failAloud()
 
 
     optimize: (options) ->
@@ -52,7 +68,14 @@ exports.main = ->
         cssMinify: not options.disableCssMinify
         js: not options.disableJs
         jsMinify: not options.disableJsMinify
+        removeSources: !!options.removeSources
       optimizer.run()
+
+
+    purgeOptimizedSources: (options) ->
+      handleChdir(options)
+      purgeSources("#{ preparePath(process.cwd()) }/#{ options.out }")
+
 
 
     clean: (options) ->

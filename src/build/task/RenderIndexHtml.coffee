@@ -28,13 +28,25 @@ class RenderIndexHtml extends BuildTask
     global.config    = config.node
     global.CORD_PROFILER_ENABLED = config.node.debug.profiler.enable
 
-    Future.call(fs.readFile, path.join(@params.targetDir, 'public/assets/z/browser-init.id'), 'utf8').then (id) ->
-      global.config.browserInitScriptId = id
-    .catch ->
-      true
-    .zip(requirejsConfig(@params.targetDir)).then ->
-      Future.require('cord!AppConfigLoader', 'cord!utils/DomInfo', 'cord!ServiceContainer', 'cord!WidgetRepo', 'cord!router/serverSideRouter')
-    .then (AppConfigLoader, DomInfo, ServiceContainer, WidgetRepo, ServerSideRouter) =>
+    browserInitPromise =
+      Future.call(fs.readFile, path.join(@params.targetDir, 'public/assets/z/browser-init.id'), 'utf8').then (id) ->
+        global.config.browserInitScriptId = id
+        return
+      .catch -> return
+
+    Future.all [
+      browserInitPromise
+      requirejsConfig(@params.targetDir)
+    ]
+    .then ->
+      Future.require(
+        'cord!AppConfigLoader'
+        'cord!utils/DomInfo'
+        'cord!ServiceContainer'
+        'cord!WidgetRepo'
+        'cord!router/serverSideRouter'
+      )
+    .spread (AppConfigLoader, DomInfo, ServiceContainer, WidgetRepo, ServerSideRouter) =>
       # replace placeholder in configs
       config = ServerSideRouter.constructor.replaceConfigVarsByHost(config, '127.0.0.1', 'http')
 
