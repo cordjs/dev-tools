@@ -19,7 +19,7 @@ class CompileTemplateToVdom extends BuildTask
     src = "#{ @params.baseDir }/#{ @params.file }"
     dst = "#{ @params.targetDir }/#{ dirname }/#{ basename }.js"
 
-    Future.call(fs.readFile, src, 'utf8').then (dustString) =>
+    compilePromise = Future.call(fs.readFile, src, 'utf8').then (dustString) =>
       ast = dustVdom.parse(dustString)
       console.log "----------------VDOM-------------------------"
       console.log JSON.stringify(ast, null, 2)
@@ -36,10 +36,15 @@ class CompileTemplateToVdom extends BuildTask
         return function(props, state, calc){ return #{hyperscript}; };
       });
       """
-    .zip(Future.call(mkdirp, path.dirname(dst))).then (vdomJs) =>
+
+    Future.all [
+      compilePromise
+      Future.call(mkdirp, path.dirname(dst))
+    ]
+    .spread (vdomJs) =>
       Future.call(fs.writeFile, dst, vdomJs)
     .link(@readyPromise)
-    .failAloud()
+    .failAloud('CompileTemplateToVdom::run')
 
 
 
