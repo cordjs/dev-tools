@@ -105,6 +105,7 @@ class FileInfo
               isWidget = lastDirName == lowerName
               isBehaviour = (lastDirName + 'Behaviour') == lowerName
             else if ext == '.html'
+              # Cord core widgetCompiler will decide itself whether it's widget template or additional one
               isWidgetTemplate = true # lastDirName == fileWithoutExt
           else if inModels
             isModelRepo = ext == '.coffee' and fileWithoutExt.substr(-4) == 'Repo'
