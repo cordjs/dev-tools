@@ -39,6 +39,6 @@
     "url":    "https://github.com/cordjs/dev-tools.git"
   },
   "scripts": {
-    "prepublish": "coffee -bwo lib/ src/"
+    "prepublish": "coffee -bo lib/ src/"
   }
 }
