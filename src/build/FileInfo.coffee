@@ -1,9 +1,5 @@
 path = require('path')
 
-# regexp: !test/.*/specs/.*\.coffee$!
-testSpecPathRegExp = new RegExp('test/.*/specs/.*\\.coffee$')
-testObjectPathRegExp = new RegExp('test/.*/(page-objects|helpers)/.*\\.coffee$')
-
 
 class FileInfo
   ###
@@ -133,8 +129,6 @@ class FileInfo
     isCoffee: ext == '.coffee'
     isHtml: ext == '.html'
     isStylus: ext == '.styl'
-    isTestSpec: file.match(testSpecPathRegExp)?
-    isTestObject: file.match(testObjectPathRegExp)?
 
 
   @getBuildDestinationFile: (file, info) ->
