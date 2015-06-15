@@ -5,7 +5,7 @@ mkdirp = require 'mkdirp'
 
 Future = require '../utils/Future'
 rmrf   = require '../utils/rmrf'
-sha1   = require '../utils/sha1'
+sha1   = require 'sha1'
 
 browserInitGenerator = require './browserInitGenerator'
 CssOptimizer         = require './CssOptimizer'

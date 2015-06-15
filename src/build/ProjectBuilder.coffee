@@ -189,7 +189,6 @@ class ProjectBuilder extends EventEmitter
     )
     scanRegularDir(@params.baseDir + '/public/vendor')
     scanRegularDir(@params.baseDir + '/conf')
-    scanRegularDir(@params.baseDir + '/test')
     #scanRegularDir(@params.baseDir + '/node_modules')
     buildManager.createTask('server.coffee', @params.baseDir, @params.targetDir, fileInfo.getFileInfo('server.coffee'))
       .link(completePromise)
