@@ -1,6 +1,6 @@
 _ = require 'underscore'
 
-sha1 = require '../utils/sha1'
+sha1 = require 'sha1'
 
 
 class HeuristicGroupDetector
