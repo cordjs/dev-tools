@@ -74,7 +74,7 @@ exports.main = ->
 
     purgeOptimizedSources: (options) ->
       handleChdir(options)
-      purgeSources("#{ preparePath(process.cwd()) }/#{ options.out }")
+      purgeSources("#{ normalizePathSeparator(process.cwd()) }/#{ options.out }")
 
 
 
