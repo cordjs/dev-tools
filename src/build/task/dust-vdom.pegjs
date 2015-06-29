@@ -16,11 +16,11 @@ body
    part is defined as anything that matches with raw or comment or section or partial or special or reference or buffer
 ---------------------------------------------------------------------------------------------------------------------------------------*/
 part
-  = html_tag / eol / plain_text / js_expr //raw / comment / section / partial / special / reference / buffer
+  = html_tag / section / plain_text / js_expr //raw / comment / partial / special / reference / buffer
 
 html_tag
   = s:html_tag_start gt b:body e:html_end_tag? &{
-    console.log("html_tag", s, b, e);
+    // console.log("html_tag", s, b, e);
     if( (!e) || (s.name !== e) ) {
       error("Expected end tag for "+s.name+" but it was not found.");
     }
@@ -95,8 +95,27 @@ key "key"
   = h:[a-zA-Z_$] t:[0-9a-zA-Z_$-]*
   { return h + t.join(''); }
 
+/*-------------------------------------------------------------------------------------------------------------------------------------
+   identifier is defined as matching a path or key - reference to some variable
+---------------------------------------------------------------------------------------------------------------------------------------*/
+identifier "identifier"
+  = p:("props" / "state" / "calc") "." k:key { console.info("identifier", p, k ); return p + '.' + k; }
+/*  = p:path
+  {
+    var arr = ["path"].concat(p);
+    arr.text = p[1].join('.').replace(/,line,\d+,col,\d+/g,'');
+    return arr;
+  }
+  / k:key
+  {
+    var arr = ["key", k];
+    arr.text = k;
+    return arr;
+  }
+*/
+
 js_expr "Javascript Expression"
-  = ld e:(nested:js_expr{ return '{'+nested.code+'}'} / !rd c:. {return c})+ rd
+  = ld !('/' / '?') e:(nested:js_expr{ return '{'+nested.code+'}'} / !rd c:. {return c})+ rd
   {
     console.log('js_expr', e.join(''));
     return {
@@ -109,9 +128,10 @@ js_expr "Javascript Expression"
 
 
 plain_text "plain text as is"
-  = b:(!any_tag !js_expr c:. {return c})+
+  = eol ws* { return undefined; }
+  / b:(!any_tag !js_expr !eol c:. {return c})+
   {
-    console.log("plain_text", b.join(''));
+    //console.log("plain_text", b.join(''));
     return {
       type: 'text',
       text: b.join(''),
@@ -120,8 +140,68 @@ plain_text "plain text as is"
     };
   }
 
+
+/**
+ * Any html-tag or section-tag (opening and closing)
+ * Used to exclude them from plain text
+ */
 any_tag
-  = lt ws* '/'? ws* (!gt !eol .)+ ws* gt
+  = lt '/'? ws* ws* (!gt !eol .)+ ws* gt
+  / ld '/'? ws* (!rd !eol .)+ ws* rd
+
+
+/*-------------------------------------------------------------------------------------------------------------------------------------
+   section is defined as matching with with sec_tag_start followed by 0 or more white spaces plus a closing brace plus body
+   plus bodies plus end_tag or sec_tag_start followed by a slash and closing brace
+---------------------------------------------------------------------------------------------------------------------------------------*/
+section "section"
+  = s:sec_tag_start ws* rd b:body e:sec_end_tag
+  // non-self-closing format
+  &{
+    console.log("SECTION", e);
+    if( (!e) || (s.name !== e) ) {
+      error("Expected end tag for section "+s.name+" but it was not found.");
+    }
+    return true;
+  }
+  {
+    return {
+      type: 'section',
+      name: e,
+      modifier: s.modifier,
+      contents: b,
+      line: line(),
+      column: column()
+    };
+  }
+/*  // self-closing format
+  / t:sec_tag_start ws* "/" rd
+  {
+    t.push(["bodies"], ["filters"]);
+    return withPosition(t)
+  }
+*/
+
+/*-------------------------------------------------------------------------------------------------------------------------------------
+   sec_tag_start is defined as matching an opening brace followed by one of #?^<+@% plus identifier plus context plus param
+   followed by 0 or more white spaces
+---------------------------------------------------------------------------------------------------------------------------------------*/
+sec_tag_start
+  = ld t:[#?^<+@%] ws* n:identifier /*c:context p:params*/
+  {
+    return {
+      modifier: t,
+      name: n
+    };
+  }
+
+/*-------------------------------------------------------------------------------------------------------------------------------------
+   end_tag is defined as matching an opening brace followed by a slash plus 0 or more white spaces plus identifier followed
+   by 0 or more white spaces and ends with closing brace
+---------------------------------------------------------------------------------------------------------------------------------------*/
+sec_end_tag "end tag"
+  = ld '/' ws* n:identifier ws* rd { return n; }
+
 
 lt
   = '<'
