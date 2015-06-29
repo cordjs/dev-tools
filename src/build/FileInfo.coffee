@@ -1,9 +1,5 @@
 path = require('path')
 
-# regexp: !test/.*/specs/.*\.coffee$!
-testSpecPathRegExp = new RegExp('test/.*/specs/.*\\.coffee$')
-testObjectPathRegExp = new RegExp('test/.*/(page-objects|helpers)/.*\\.coffee$')
-
 
 class FileInfo
   ###
@@ -105,6 +101,7 @@ class FileInfo
               isWidget = lastDirName == lowerName
               isBehaviour = (lastDirName + 'Behaviour') == lowerName
             else if ext == '.html'
+              # Cord core widgetCompiler will decide itself whether it's widget template or additional one
               isWidgetTemplate = true # lastDirName == fileWithoutExt
           else if inModels
             isModelRepo = ext == '.coffee' and fileWithoutExt.substr(-4) == 'Repo'
@@ -133,8 +130,6 @@ class FileInfo
     isHtml: ext == '.html'
     isVdom: (ext == '.html' and path.extname(fileWithoutExt) == '.vdom')
     isStylus: ext == '.styl'
-    isTestSpec: file.match(testSpecPathRegExp)?
-    isTestObject: file.match(testObjectPathRegExp)?
 
 
   @getBuildDestinationFile: (file, info) ->

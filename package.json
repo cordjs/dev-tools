@@ -1,7 +1,7 @@
 {
   "name":       "cordjs",
   "keywords":   ["cordjs", "framework"],
-  "version":    "0.3.25",
+  "version":    "0.3.28",
   "directories": {
     "lib":    "./lib"
   },
@@ -27,6 +27,7 @@
     "postal":           "=0.7.3",
     "request":          "=2.51.0",
     "requirejs":        "=2.1.8",
+    "sha1":             "^1.1.1",
     "stylus":           "=0.41.3",
     "uglify-js":        ">=2.4.14",
     "underscore":       "=1.7.0"
@@ -37,5 +38,8 @@
   "repository": {
     "type":   "git",
     "url":    "https://github.com/cordjs/dev-tools.git"
+  },
+  "scripts": {
+    "prepublish": "coffee -bo lib/ src/"
   }
 }

@@ -5,7 +5,7 @@ _        = require 'underscore'
 CleanCss = require 'clean-css'
 
 Future = require '../utils/Future'
-sha1   = require '../utils/sha1'
+sha1   = require 'sha1'
 
 CorrelationGroupDetector = require './CorrelationGroupDetector'
 GroupRepo                = require './GroupRepo'
