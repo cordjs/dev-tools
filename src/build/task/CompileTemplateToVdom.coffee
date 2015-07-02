@@ -88,7 +88,6 @@ astToHyperscript = (ast, indent = 0) ->
 
             propsInfo = propsToHyperscript(node.props, indent)
 
-            console.log "props", node.name, node.props
             "h('#{node.name}#{propsInfo.idStr}'#{propsInfo.propsStr}#{contentsStr})"
 
         when 'section'
