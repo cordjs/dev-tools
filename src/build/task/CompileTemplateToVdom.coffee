@@ -37,7 +37,7 @@ class CompileTemplateToVdom extends BuildTask
       console.log "---------------------------------------------"
       """
       define(['cord!vdom/vhyperscript/h'],function(h){
-        var w = h.w;
+        var w = h.w, v = h.v;
         #{info.blockFns.join("\n  ")}
         return function(props, state, calc){ return #{info.hyperscript}; };
       });
@@ -113,7 +113,7 @@ astToHyperscript = (ast, indent = 0) ->
 
         when 'expr'
           resultInfo.usedContext = _.union(resultInfo.usedContext, detectUsedContext(node.code))
-          "String(#{node.code})"
+          node.code
 
   chunks = mergeTextChunks(chunks, ast)
 
@@ -157,16 +157,34 @@ compilePropValue = (propValue) ->
 
 
 mergeTextChunks = (chunks, ast) ->
+  ###
+  Minimizes number of text nodes in the resulting vtree by merging neighbour text chunks and expressions
+   into one call of v() function that handles async values of expressions.
+  Single text chunks and expressions doesn't need to be wrapped into v()
+  @param {Array.<string>} chunks
+  @param {Array.<Object>} ast
+  @return {Array.<string>} shortened list of chunks
+  ###
   result = []
   prevVtext = false
+  chainStarted = false
   for node, i in ast
     if chunks[i]?  # undefined and null is just ignored
       curVtext = node.type in ['text', 'expr']
       if curVtext and prevVtext
-        result[result.length - 1] += ' + ' + chunks[i]
+        if chainStarted
+          result[result.length - 1].push(chunks[i])
+        else
+          result[result.length - 1] = [result[result.length - 1], chunks[i]]
+          chainStarted = true
       else
+        if chainStarted
+          result[result.length - 1] = 'v(' + result[result.length - 1].join(', ') + ')'
+          chainStarted = false
         result.push(chunks[i])
       prevVtext = curVtext
+  if chainStarted
+    result[result.length - 1] = 'v(' + result[result.length - 1].join(', ') + ')'
   result
 
 
