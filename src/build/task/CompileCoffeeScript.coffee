@@ -52,7 +52,6 @@ class CompileCoffeeScript extends BuildTask
         replacement = "#{name}.__name = '#{name}';\n";
         if inf.isWidget
           templatePath = "#{@params.baseDir}/#{dirname}/#{inf.lastDirName}.html"
-          console.log "Check existense of", templatePath
           hasOwnTemplate = if fs.existsSync(templatePath)
             'true'
           else
