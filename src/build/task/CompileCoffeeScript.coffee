@@ -49,7 +49,17 @@ class CompileCoffeeScript extends BuildTask
       inf = @params.info
       if inf.isWidget or inf.isBehaviour or inf.isModelRepo or inf.isCollection
         name = inf.fileNameWithoutExt
-        answer.js = answer.js.replace("return #{name};\n", "#{name}.__name = '#{name}';\n\n   return #{name};\n")
+        replacement = "#{name}.__name = '#{name}';\n";
+        if inf.isWidget
+          templatePath = "#{@params.baseDir}/#{dirname}/#{inf.lastDirName}.html"
+          console.log "Check existense of", templatePath
+          hasOwnTemplate = if fs.existsSync(templatePath)
+            'true'
+          else
+            'false'
+          replacement += "#{name}.__hasOwnTemplate = #{hasOwnTemplate};\n"
+        replacement += "return #{name};\n"
+        answer.js = answer.js.replace("return #{name};\n", replacement)
       answer.js = @postCompilerCallback(answer.js) if @postCompilerCallback?
       if @params.generateSourceMap
         answer.js = "#{answer.js}\n//# sourceMappingURL=#{dstName}.map"
