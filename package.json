@@ -4,7 +4,7 @@
     "cordjs",
     "framework"
   ],
-  "version": "0.3.31",
+  "version": "0.3.32",
   "directories": {
     "lib": "./lib"
   },
