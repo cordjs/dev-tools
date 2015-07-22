@@ -234,17 +234,19 @@ class ProjectBuilder extends EventEmitter
 
     @_previousSessionPromise = fullCompletePromise.catch -> true
 
+    showFinalMessage = (verb) ->
+      diff = process.hrtime(start)
+      console.log "Build #{verb} in #{ parseFloat((diff[0] * 1e9 + diff[1]) / 1e9).toFixed(3) } s"
+
     fullCompletePromise
-      .then -> 'completed'
       .catch (err) ->
         console.error "Build error", err, err.stack
-        'failed'
-      .then (verb) =>
-        diff = process.hrtime(start)
-        console.log "Build #{verb} in #{ parseFloat((diff[0] * 1e9 + diff[1]) / 1e9).toFixed(3) } s"
-        if verb == 'completed'
-          buildManager.stop()
-          @emit 'complete'
+        showFinalMessage('failed')
+        throw err
+      .then =>
+        showFinalMessage('completed')
+        buildManager.stop()
+        @emit 'complete'
       .failAloud('ProjectBuilder::build')
 
 
