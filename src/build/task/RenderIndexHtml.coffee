@@ -43,10 +43,9 @@ class RenderIndexHtml extends BuildTask
         'cord!AppConfigLoader'
         'cord!utils/DomInfo'
         'cord!ServiceContainer'
-        'cord!WidgetRepo'
         'cord!router/serverSideRouter'
       )
-    .spread (AppConfigLoader, DomInfo, ServiceContainer, WidgetRepo, ServerSideRouter) =>
+    .spread (AppConfigLoader, DomInfo, ServiceContainer, ServerSideRouter) =>
       # replace placeholder in configs
       config = ServerSideRouter.constructor.replaceConfigVarsByHost(config, '127.0.0.1', 'http')
 
@@ -54,31 +53,29 @@ class RenderIndexHtml extends BuildTask
       global.config    = config.node
 
       # initializing core CordJS services
-      container = new ServiceContainer
-      container.set('container', container)
-      container.set('config', global.config)
-      container.set('appConfig', global.appConfig)
-
-      widgetRepo = new WidgetRepo
-      widgetRepo.setServiceContainer(container)
+      serviceContainer = new ServiceContainer
+      serviceContainer.set('serviceContainer', serviceContainer)
+      serviceContainer.set('config', global.config)
+      serviceContainer.set('appConfig', global.appConfig)
 
       AppConfigLoader.ready().then (appConfig) =>
         appConfig.services.cookie =
-          deps: ['container']
+          deps: ['serviceContainer']
           factory: (get, done) ->
             requirejs ['cord!/cord/core/cookie/LocalCookie'], (Cookie) =>
-              done(null, new Cookie(get('container')))
+              done(null, new Cookie(get('serviceContainer')))
 
         for serviceName, info of appConfig.services
           do (info) ->
-            container.def serviceName, info.deps, (get, done) ->
-              info.factory.call(container, get, done)
+            serviceContainer.def serviceName, info.deps, (get, done) ->
+              info.factory.call(serviceContainer, get, done)
 
-        # rendering the given widget to save as index.html
-        widgetRepo.createWidget(@params.file).then (rootWidget) ->
-          rootWidget._isExtended = true
-          widgetRepo.setRootWidget(rootWidget)
-          rootWidget.show({}, DomInfo.fake())
+        serviceContainer.getService('widgetRepo').then (widgetRepo) =>
+          # rendering the given widget to save as index.html
+          widgetRepo.createWidget(@params.file).then (rootWidget) ->
+            rootWidget._isExtended = true
+            widgetRepo.setRootWidget(rootWidget)
+            rootWidget.show({}, DomInfo.fake())
     .then (out) ->
       Future.call(fs.writeFile, dst, out)
     .link(@readyPromise)
