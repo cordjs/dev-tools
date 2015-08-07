@@ -6,9 +6,8 @@ requirejs = require process.cwd() + '/node_modules/requirejs'
 Future = require '../../utils/Future'
 
 BuildTask       = require './BuildTask'
+coreUtils       = require './coreUtils'
 requirejsConfig = require './requirejs-config'
-
-pathToCore = 'bundles/cord/core'
 
 
 class RenderIndexHtml extends BuildTask
@@ -21,7 +20,7 @@ class RenderIndexHtml extends BuildTask
     dst = "#{@params.targetDir}/public/index.html"
 
     # loading CordJS configuration
-    nodeInit = require(path.join(@params.targetDir, 'public', pathToCore, 'init/nodeInit'))
+    nodeInit = require(path.join(@params.targetDir, coreUtils.getPathToCore(), 'init/nodeInit'))
     config = nodeInit.loadConfig(@params.info.configName)
 
     global.appConfig = config

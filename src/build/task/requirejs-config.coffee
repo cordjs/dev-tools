@@ -4,8 +4,8 @@ requirejs = require process.cwd() + '/node_modules/requirejs'
 
 Future = require '../../utils/Future'
 
+coreUtils = require './coreUtils'
 
-pathToCore = 'bundles/cord/core'
 
 _requirejsReady = null
 
@@ -18,7 +18,7 @@ module.exports = (targetDir) ->
   @return Future[Nothing]
   ###
   if not _requirejsReady?
-    pathConfig = require "#{ path.join(targetDir, 'public', pathToCore) }/requirejs/pathConfig"
+    pathConfig = require(path.join(targetDir, coreUtils.getPathToCore(), 'requirejs/pathConfig'))
     requirejs.config
       baseUrl: path.join(targetDir, 'public')
       nodeRequire: require
