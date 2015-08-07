@@ -12,6 +12,8 @@ Fake                  = require './task/Fake'
 CopyFile              = require './task/CopyFile'
 RenderIndexHtml       = require './task/RenderIndexHtml'
 
+requirejs = require 'requirejs'
+
 
 class BuildWorker
 
@@ -50,6 +52,20 @@ class BuildWorker
     else CopyFile
 
 
+  failAllTasks: ->
+    ###
+    Used only in case of requireJs failure.
+    While it cannot be caught in usual way we use onError handler and process message propagation
+    ###
+    err = new Error('Terminated due to requireJs error')
+    for taskId of @tasks
+      process.send
+        type: 'failed'
+        task: taskId
+        error: err
+    @tasks = []
+    return
+
 
 worker = new BuildWorker
 
@@ -68,3 +84,8 @@ process.on 'message', (task) ->
       type: 'failed'
       task: task.id
       error: err
+
+
+requirejs.onError = (err) ->
+  console.error 'ERROR while loading in REQUIREJS:', err, err.stack
+  worker.failAllTasks()
