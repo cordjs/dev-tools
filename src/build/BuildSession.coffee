@@ -3,10 +3,11 @@ path = require 'path'
 
 requirejs = require process.cwd() + '/node_modules/requirejs'
 
-Future = require('../utils/Future')
+Future = require '../utils/Future'
+fsUtils = require '../utils/fsUtils'
 
-buildManager = require('./BuildManager')
-fileInfo = require('./FileInfo')
+buildManager = require './BuildManager'
+fileInfo = require './FileInfo'
 
 
 class BuildSession
@@ -53,8 +54,8 @@ class BuildSession
       @_handleFile(file, 'cord/core').link(@_pathUtilsPromise)
     else
       @_appConfPromise.finally =>
-        @_handleFile(file, fileInfo.detectBundle(file)).catch ->
-          console.error "Build task failed for\n#{file}"
+        @_handleFile(file, fileInfo.detectBundle(file)).catch (err) ->
+          console.error "Build task failed for\n#{file}", err, err.stack
           null
         .link(@_completePromise)
       .link(@_completePromise)
@@ -82,18 +83,22 @@ class BuildSession
 
   _handleFile: (file, bundle) ->
     info = fileInfo.getFileInfo(file, bundle)
-    if info.isStylus
+    if info.inWidgets
+      isVdomWidget(file).then (vdomWidgetDirItems) =>
+        if vdomWidgetDirItems
+          @_createVdomWidgetTask(path.dirname(file), vdomWidgetDirItems, bundle)
+        else
+          if info.isWidget
+            @_corePromise.then =>
+              @_createTask(file, info)
+            .link(@_widgetClassesPromise)
+          else if info.isWidgetTemplate
+            @_widgetClassesPromise.then =>
+              @_createTask(file, info)
+          else
+            @_createTask(file, info)
+    else if info.isStylus
       @_pathUtilsPromise.then =>
-        @_createTask(file, info)
-    else if info.inWidgets
-      if info.isWidget
-        @_corePromise.then =>
-          @_createTask(file, info)
-        .link(@_widgetClassesPromise)
-      else if info.isWidgetTemplate
-        @_widgetClassesPromise.then =>
-          @_createTask(file, info)
-      else
         @_createTask(file, info)
     else if bundle == 'cord/core'
       @_createTask(file, info).link(@_corePromise)
@@ -107,6 +112,41 @@ class BuildSession
         buildManager.createTask(file, @params.baseDir, @params.targetDir, info)
       else
         return
+
+
+  _createVdomWidgetTask: (widgetDir, dirItems, bundle) ->
+    ###
+    Checks if any file of the given vdom-widget is modified and creates build task for it.
+    @param {string} widgetDir - path to the vdom-widget directory
+    @param {Object} dirItems - map of the widget directory item names with their fs.stats
+    @param {string} bundle - the widget's bundle name
+    @return {Promise.<undefined>|undefined}
+    ###
+    modified = (fileName) =>
+      relativeName = "#{widgetDir}/#{fileName}"
+      @_sourceModified(relativeName, fileInfo.getFileInfo(relativeName, bundle))
+
+    lowerName = path.basename(widgetDir)
+    upperName = lowerName.charAt(0).toUpperCase() + lowerName.slice(1)
+    vdomTemplateFile = lowerName + '.vdom.html'
+    widgetClassFile = upperName + '.coffee'
+    stylusFile = lowerName + '.styl'
+    if dirItems[widgetClassFile] and dirItems[widgetClassFile].isFile()
+      modifiedPromises = [
+        modified(widgetClassFile)
+        modified(vdomTemplateFile)
+      ]
+      modifiedPromises.push(modified(stylusFile))  if dirItems[stylusFile] and dirItems[stylusFile].isFile()
+
+      Future.all(modifiedPromises).spread (classModified, templateModified, stylusModified) =>
+        if classModified or templateModified or stylusModified
+          buildManager.createTask "#{widgetDir}/#{widgetClassFile}", @params.baseDir, @params.targetDir,
+            isVdom: true
+            classModified: classModified
+            templateModified: templateModified
+            stylusExists: stylusModified?
+            stylusModified: stylusModified
+            lastDirName: lowerName
 
 
   _sourceModified: (file, info) ->
@@ -127,6 +167,24 @@ class BuildSession
       srcStat.mtime.getTime() > dstStat.mtime.getTime()
     .catch ->
       true
+
+
+
+isVdomWidget = (file) ->
+  ###
+  Detects if the given file belongs to the virtual-dom widget.
+  If it is - returns directory listing of the widget
+  @param {string} file - path to the checked file
+  @return {Promise.<Object|undefined>}
+  ###
+  widgetDir = path.dirname(file)
+  lowerName = path.basename(widgetDir)
+  fsUtils.getDirLsStat(widgetDir).then (dirItems) =>
+    vdomTemplateFile = lowerName + '.vdom.html'
+    if dirItems[vdomTemplateFile] and dirItems[vdomTemplateFile].isFile()
+      dirItems
+    else
+      undefined
 
 
 

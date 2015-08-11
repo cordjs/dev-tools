@@ -94,6 +94,7 @@ class FileInfo
           inBundleIndex = 2 + bundleParts.length
           inWidgets = parts[inBundleIndex] == 'widgets'
           inTemplates = parts[inBundleIndex] == 'templates'
+          inCss = parts[inBundleIndex] == 'css'
           inModels = parts[inBundleIndex] == 'models'
           if inWidgets
             if ext == '.coffee'
@@ -119,6 +120,7 @@ class FileInfo
     inBundles: inBundles ? false
     inWidgets: inWidgets ? false
     inTemplates: inTemplates ? false
+    inCss: inCss ? false
     inModels: inModels ? false
     isAppConfig: inApp and lastDirName == 'app' and ext == '.coffee'
     isWidget: isWidget ? false
@@ -141,6 +143,8 @@ class FileInfo
     ###
     if info.isCoffee
       path.dirname(file) + path.sep + info.fileNameWithoutExt + '.js'
+    else if info.isVdom
+      path.dirname(file) + path.sep + info.fileNameWithoutExt + '.json'
     else if info.isStylus
       path.dirname(file) + path.sep + info.fileNameWithoutExt + '.css'
     else if info.isWidgetTemplate

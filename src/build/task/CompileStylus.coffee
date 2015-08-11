@@ -1,44 +1,20 @@
-fs = require('fs')
-path = require('path')
-mkdirp = require('mkdirp')
-stylus = require('stylus')
-nib = require('nib')
-Future = require('../../utils/Future')
-BuildTask = require('./BuildTask')
+fs = require 'fs'
+path = require 'path'
 
-pathToCore = 'bundles/cord/core'
+mkdirp = require 'mkdirp'
+stylus = require 'stylus'
 
+Future = require '../../utils/Future'
 
-stylusLib = (style) ->
-  style.define('url', stylus.url())
-  style.use(nib())
-  style.import('nib')
+BuildTask = require './BuildTask'
+coreUtils = require './coreUtils'
+stylusUtils = require './stylusUtils'
+
 
 replaceImportRe = /^@import ['"](.*\/\/.+)['"]$/gm
 
-_pathUtils = null
-pathUtils = (baseDir, repeat = 0) ->
-  ###
-  Lazy val
-  ###
-  _pathUtils = require "#{ path.join(baseDir, 'public', pathToCore) }/requirejs/pathUtils" if not _pathUtils?
-  if typeof _pathUtils.convertCssPath != 'function' and repeat < 10
-    path = "#{ path.join(baseDir, 'public', pathToCore) }/requirejs/pathUtils.js"
-    console.error ''
-    console.error '###############################################################'
-    console.error "Invalid pathUtils:", _pathUtils, _pathUtils._publicPrefix, _pathUtils.convertCssPath, repeat
-    console.error path
-    console.error fs.readFileSync(path, encoding: 'utf8')
-    console.error '###############################################################'
-    console.error ''
-    _pathUtils = null
-    _pathUtils = pathUtils(baseDir, repeat + 1)
-  _pathUtils
-
 
 class CompileStylus extends BuildTask
-
-  @totalPreprocessTime: [0, 0]
 
   run: ->
     dirname = path.dirname(@params.file)
@@ -48,19 +24,22 @@ class CompileStylus extends BuildTask
     dst = "#{ @params.targetDir }/#{ dirname }/#{ basename }.css"
 
     compilePromise = Future.call(fs.readFile, src, 'utf8').then (stylusStr) =>
-      pu = pathUtils(@params.targetDir)
-      preprocessedStr = stylusStr.replace replaceImportRe, (match, p1) ->
-        "@import '#{ pu.convertCssPath(p1, src) }'"
+      if @params.info.inCss
+        # css folder in bundle root is handled differently using stylus preprocessing to resolve @import paths
+        stylusUtils.preprocessBundleStylus(stylusStr, @params.file, @params.targetDir)
+      else
+        # old-widget's stylus handling
+        pu = coreUtils.pathUtils(@params.targetDir)
+        stylusStr.replace replaceImportRe, (match, p1) ->
+          "@import '#{ pu.convertCssPath(p1, src) }'"
+    .then (preprocessedStr) =>
       styl = stylus(preprocessedStr)
         .set('filename', src)
         .set('compress', true)
-#        .set 'preprocessImport', (path, srcFile) ->
-#          if path.indexOf('//') < 0
-#            path
-#          else
-#            pu.convertCssPath(path, srcFile)
-        .include(@params.baseDir)
-        .use(stylusLib)
+        # for new-style stylus preprocessing we need to import preprocessed stylus files from the target directory
+        # instead of source stylus file from base directory
+        .include(if @params.info.inCss then @params.targetDir else @params.baseDir)
+        .use(stylusUtils.importStylusLibs)
       Future.call([styl, 'render'])
 
     Future.all [

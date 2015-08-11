@@ -10,6 +10,7 @@ requirejs = require process.cwd() + '/node_modules/requirejs'
 Future    = require '../utils/Future'
 rmrf      = require '../utils/rmrf'
 fswalker  = require '../utils/fswalker'
+fsUtils   = require '../utils/fsUtils'
 
 appConfig       = require '../appConfig'
 requirejsConfig = require './task/requirejs-config'
@@ -62,6 +63,8 @@ class ProjectBuilder extends EventEmitter
     widgetClassesPromise = new Future(1)
     nonWidgetFilesPromise = new Future(1)
     relativePos = @params.baseDir.length + 1
+    baseDir = @params.baseDir
+    targetDir = @params.targetDir
 
 
     scanDir = (dir, payloadCallback) =>
@@ -142,38 +145,186 @@ class ProjectBuilder extends EventEmitter
 
 
     scanBundle = (bundle) =>
+      ###
+      Processes the given bundle directory (first level) and launches processing of sub-directories depending of their type.
+      @param {string} bundle - full bundle name with namespace without leading slash
+      ###
+      bundleDir = "#{@params.baseDir}/public/bundles/#{bundle}"
+      fsUtils.getDirLsStat(bundleDir).then (dirItems) =>
+        for name, stat of dirItems when walkerFilter(bundleDir, name)
+          if stat.isDirectory()
+            if name == 'widgets'
+              scanWidgets("#{bundleDir}/#{name}", bundle)
+            else
+              scanCommonDir("#{bundleDir}/#{name}", bundle)
+          else if stat.isFile()
+            processCommonFile("public/bundles/#{bundle}/#{name}", stat, bundle)
+        @watchDir(bundleDir)
+        return
+      .link(widgetClassesPromise)
+      .link(nonWidgetFilesPromise)
+      return
+
+
+    scanWidgets = (widgetsDir, bundle) =>
+      ###
+      Processes 'widgets' directory of the given bundle. Enables recursive scanning of every sub-directory.
+      @param {string} widgetsDir - path to the 'widgets' directory
+      @param {string} bundle - full bundle name with namespace without leading slash
+      @return {Promise.<undefined>} resolved when all tasks are completed
+      ###
       widgetClassesPromise.fork()
       nonWidgetFilesPromise.fork()
-      scanDir "#{ @params.baseDir }/public/bundles/#{ bundle }", (relativeName, stat) =>
-        info = fileInfo.getFileInfo(relativeName, bundle)
-        completePromise.fork()
-        sourceModified(relativeName, stat, @params.targetDir, info).then (modified) =>
-          if modified
-            if info.isWidget
-              corePromise.then =>
-                buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
-              .link(completePromise)
-              .link(widgetClassesPromise)
-            else if info.isWidgetTemplate
-              Future.all([widgetClassesPromise, nonWidgetFilesPromise]).then =>
-                buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
-              .link(completePromise)
-            else if info.isCoffee and not info.inWidgets
-              buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
-                .link(completePromise)
-                .link(nonWidgetFilesPromise)
-            else if info.isStylus
-              pathUtilsPromise.then =>
-                buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
-              .link(completePromise)
-            else
-              buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
-                .link(completePromise)
-          completePromise.resolve()
-          return
-      .on 'end', ->
+      fsUtils.getDirLsStat(widgetsDir).then (dirItems) =>
+        promises =
+          for name, stat of dirItems when stat.isDirectory() and walkerFilter(widgetsDir, name)
+            processWidgetDirRec("#{widgetsDir}/#{name}", bundle)
         widgetClassesPromise.resolve()
         nonWidgetFilesPromise.resolve()
+        @watchDir(widgetsDir)
+        Future.all(promises)
+      .link(completePromise)
+
+
+    processWidgetDirRec = (widgetDir, bundle) =>
+      ###
+      Launches build tasks for the artifacts of the given concrete widget directory.
+      Handles differently new vdom-widgets and old-widgets.
+      Also recursively processes any sub-directory widgets.
+      @param {string} widgetDir - path to the widget directory
+      @param {string} bundle - full bundle name with namespace without leading slash
+      @return {Promise.<undefined>} resolved when all tasks are completed
+      ###
+      widgetClassesPromise.fork()
+      nonWidgetFilesPromise.fork()
+
+      lowerName = path.basename(widgetDir)
+      upperName = lowerName.charAt(0).toUpperCase() + lowerName.slice(1)
+      relativeDir = widgetDir.substr(relativePos)
+
+      modified = (fileName, stat) ->
+        relativeName = "#{relativeDir}/#{fileName}"
+        sourceModified(relativeName, stat, targetDir, fileInfo.getFileInfo(relativeName, bundle))
+
+      fsUtils.getDirLsStat(widgetDir).then (dirItems) =>
+        vdomTemplateFile = lowerName + '.vdom.html'
+        widgetClassFile = upperName + '.coffee'
+        stylusFile = lowerName + '.styl'
+
+        promises = []
+
+        # virtual-dom widgets logic
+        # all files (coffee, stylus and html) of the virtual-dom widget are compiled in a single buid task
+        if dirItems[vdomTemplateFile] and dirItems[vdomTemplateFile].isFile()
+          if dirItems[widgetClassFile] and dirItems[widgetClassFile].isFile()
+            modifiedPromises = [
+              modified(widgetClassFile, dirItems[widgetClassFile])
+              modified(vdomTemplateFile, dirItems[vdomTemplateFile])
+            ]
+            if dirItems[stylusFile] and dirItems[stylusFile].isFile()
+              modifiedPromises.push(modified(stylusFile, dirItems[stylusFile]))
+
+            promises.push(
+              Future.all(modifiedPromises).spread (classModified, templateModified, stylusModified) ->
+                if classModified or templateModified or stylusModified
+                  buildManager.createTask "#{relativeDir}/#{widgetClassFile}", baseDir, targetDir,
+                    isVdom: true
+                    classModified: classModified
+                    templateModified: templateModified
+                    stylusExists: stylusModified?
+                    stylusModified: stylusModified
+                    lastDirName: lowerName
+              .link(widgetClassesPromise)
+            )
+
+        # old-widgets logic
+        else
+          for name, stat of dirItems when stat.isFile() and walkerFilter(widgetDir, name)
+            widgetClassesPromise.fork()
+            nonWidgetFilesPromise.fork()
+
+            relativeName = relativeDir + '/' + name
+            info = fileInfo.getFileInfo(relativeName, bundle)
+            do (relativeName, info) ->
+              promises.push(
+                sourceModified(relativeName, stat, targetDir, info).then (modified) ->
+                  result =
+                    if modified
+                      if info.isWidget
+                        corePromise.then =>
+                          buildManager.createTask(relativeName, baseDir, targetDir, info)
+                        .link(widgetClassesPromise)
+                      else if info.isWidgetTemplate
+                        Future.all([widgetClassesPromise, nonWidgetFilesPromise]).then ->
+                          buildManager.createTask(relativeName, baseDir, targetDir, info)
+                      else if info.isCoffee and not info.inWidgets
+                        buildManager.createTask(relativeName, baseDir, targetDir, info)
+                          .link(nonWidgetFilesPromise)
+                      else if info.isStylus
+                        pathUtilsPromise.then ->
+                          buildManager.createTask(relativeName, baseDir, targetDir, info)
+                      else
+                        buildManager.createTask(relativeName, baseDir, targetDir, info)
+
+                  widgetClassesPromise.resolve()
+                  nonWidgetFilesPromise.resolve()
+
+                  result
+              )
+
+        # processing sub-widget directories
+        for name, stat of dirItems when stat.isDirectory() and walkerFilter(widgetDir, name)
+          promises.push(processWidgetDirRec("#{widgetDir}/#{name}", bundle))
+
+        widgetClassesPromise.resolve()
+        nonWidgetFilesPromise.resolve()
+
+        @watchDir(widgetDir)
+
+        Future.all(promises)
+      .then(_.noop)
+
+
+    scanCommonDir = (dir, bundle) =>
+      ###
+      Processes non-widgets directory of the bundle. The build logic is much simpler here.
+      @param {string} dir - path to the directory in the bundle root
+      @param {string} bundle - full bundle name with namespace without leading slash
+      @return {Promise.<undefined>} resolved when all tasks are completed
+      ###
+      nonWidgetFilesPromise.fork()
+
+      scanDir dir, (relativeName, stat) ->
+        processCommonFile(relativeName, stat, bundle)
+      .on 'end', ->
+        nonWidgetFilesPromise.resolve()
+
+
+    processCommonFile = (relativeName, stat, bundle) =>
+      ###
+      Processes (creates build tasks) for non-widget files.
+      The build task is created only in case of modification of source file after the previous build.
+      @param {string} relativeName - path to the file relative to the project's base (root) directory
+      @param {Stat} stat - result of the fs.stat for the source file
+      @param {string} bundle - full bundle name with namespace without leading slash
+      @return {Promise.<undefined>} resolved when the build task is completed
+      ###
+      info = fileInfo.getFileInfo(relativeName, bundle)
+      sourceModified(relativeName, stat, @params.targetDir, info).then (modified) =>
+        if modified
+          if info.isCoffee
+            buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
+              .link(completePromise)
+              .link(nonWidgetFilesPromise)
+          else if info.isStylus
+            pathUtilsPromise.then =>
+              buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
+            .link(completePromise)
+          else
+            buildManager.createTask(relativeName, @params.baseDir, @params.targetDir, info)
+              .link(completePromise)
+        return
+      .link(completePromise)
 
 
     appConfFile = "public/app/#{@params.appConfigName}"
