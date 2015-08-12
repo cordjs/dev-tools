@@ -187,6 +187,7 @@ class JsOptimizer
             .replace('define([', "define('#{module}',[")
             .replace('define( [', "define('#{module}',[")
             .replace('define(function()', "define('#{module}',function()")
+            .replace('define(factory)', "define('#{module}',factory)")
           definePresent = js != origJs or js.indexOf('define.amd') > -1
 
           # cutting off duplicate coffee-script utility functions definitions
