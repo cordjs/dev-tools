@@ -12,7 +12,7 @@ Fake                  = require './task/Fake'
 CopyFile              = require './task/CopyFile'
 RenderIndexHtml       = require './task/RenderIndexHtml'
 
-requirejs = require 'requirejs'
+requirejs = require process.cwd() + '/node_modules/requirejs'
 
 
 class BuildWorker
