@@ -52,11 +52,13 @@ class CompileCoffeeScript extends BuildTask
         replacement = "#{name}.__name = '#{name}';\n";
         if inf.isWidget
           templatePath = "#{@params.baseDir}/#{dirname}/#{inf.lastDirName}.html"
-          hasOwnTemplate = if fs.existsSync(templatePath)
-            'true'
-          else
-            'false'
+          hasOwnTemplate = if fs.existsSync(templatePath) then 'true' else 'false'
           replacement += "#{name}.__hasOwnTemplate = #{hasOwnTemplate};\n"
+
+          behaviourPath = "#{@params.baseDir}/#{dirname}/#{name}Behaviour.coffee"
+          hasOwnBehaviour = if fs.existsSync(behaviourPath) then 'true' else 'false'
+          replacement += "#{name}.__hasOwnBehaviour = #{hasOwnBehaviour};\n"
+
         replacement += "return #{name};\n"
         answer.js = answer.js.replace("return #{name};\n", replacement)
       answer.js = @postCompilerCallback(answer.js) if @postCompilerCallback?
