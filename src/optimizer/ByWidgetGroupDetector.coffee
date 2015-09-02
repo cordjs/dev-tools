@@ -6,6 +6,7 @@ _ = require  'underscore'
 Future    = require '../utils/Future'
 sha1      = require 'sha1'
 appConfig = require '../appConfig'
+normalizePathSeparator = require '../utils/fsNormalizePathSeparator'
 
 
 class ByWidgetGroupDetector
@@ -15,7 +16,8 @@ class ByWidgetGroupDetector
 
   _widgetGroups: null
 
-  constructor: (@groupRepo, @targetDir) ->
+  constructor: (@groupRepo, targetDir) ->
+    @targetDir = normalizePathSeparator(targetDir)
     @_widgetGroups = {}
     # nothing
 
@@ -26,6 +28,7 @@ class ByWidgetGroupDetector
     @param String target absolute path to the file/directory to be removed
     @return {Future<undefined>}
     ###
+    target = normalizePathSeparator(target)
     Future.call(fs.stat, target).then (stat) =>
       if stat.isDirectory()
         @_widgetGroups[target.substr(target.indexOf('/bundles/') + 1)] = []
